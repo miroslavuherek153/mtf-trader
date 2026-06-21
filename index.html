@@ -236,6 +236,7 @@ body{display:flex;justify-content:center;align-items:flex-start;font-family:-app
           <button class="pi" onclick="selI(this,'ETH/USD',1,1)">ETHUSD</button>
           <button class="pi" onclick="selI(this,'EUR/USD',0.00001,100000)">EURUSD</button>
           <button class="pi" onclick="selI(this,'GBP/USD',0.00001,100000)">GBPUSD</button>
+          <button class="pi" onclick="selI(this,'AAPL',0.01,1)">AAPL</button>
         </div>
         <div class="dtog">
           <button class="db onL" id="dL" onclick="setDir('long')">▲ Long (nákup)</button>
@@ -573,8 +574,9 @@ function toggleSym(el) {
 }
 
 function loadCalc(sym, price, atrV, sig) {
-  const pip = sym.includes('JPY') ? 0.001 : sym.includes('XAU') ? 0.01 : (sym.includes('BTC') || sym.includes('ETH')) ? 1 : 0.00001;
-  const contract = sym.includes('XAU') ? 100 : (sym.includes('BTC') || sym.includes('ETH')) ? 1 : 100000;
+  const isForex = /^(EUR|GBP|USD|JPY|AUD|NZD|CAD|CHF)\/(EUR|GBP|USD|JPY|AUD|NZD|CAD|CHF)$/.test(sym);
+  const pip = sym.includes('JPY') ? 0.001 : sym.includes('XAU') ? 0.01 : (sym.includes('BTC') || sym.includes('ETH')) ? 1 : isForex ? 0.00001 : 0.01;
+  const contract = sym.includes('XAU') ? 100 : (sym.includes('BTC') || sym.includes('ETH')) ? 1 : isForex ? 100000 : 1;
   ID = { pip, contract, name: sym };
   document.querySelectorAll('#calcPills .pi').forEach(p => p.classList.remove('on'));
   setDir(sig === 'bull' ? 'long' : 'short');
