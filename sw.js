@@ -30,6 +30,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
 
+  // Ignoruj požadavky, které nejsou http/https (např. chrome-extension://) — Cache API je neumí uložit
+  if (!url.startsWith('http')) return;
+
   // API a CDN požadavky — vždy síť, fallback na cache jen offline
   if (url.includes('api.twelvedata.com') || url.includes('cdnjs.cloudflare.com') || url.includes('cdn.jsdelivr.net')) {
     event.respondWith(
