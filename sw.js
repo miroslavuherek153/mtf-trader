@@ -1,7 +1,9 @@
 // MTF Trader — Service Worker
-// Cache-first pro statické soubory, network-first pro API volání
+// index.html: network-first (vždy nejnovější verze, cache jen jako offline fallback)
+// Ostatní statické soubory: cache-first
+// API/CDN volání: vždy síť
 
-const CACHE_NAME = 'mtf-trader-v1';
+const CACHE_NAME = 'mtf-trader-v2';
 const STATIC_ASSETS = [
   './index.html',
   './manifest.json',
@@ -9,7 +11,6 @@ const STATIC_ASSETS = [
   './icon-512.png'
 ];
 
-// Instalace — uloží statické soubory do cache
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
@@ -17,7 +18,6 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Aktivace — smaže staré verze cache
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -27,12 +27,10 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch — API volání (Twelve Data, CDN) jdou vždy na síť,
-// statické soubory aplikace se servírují z cache s fallbackem na síť
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
 
-  // API a CDN požadavky — vždy network-first (živá data)
+  // API a CDN požadavky — vždy síť, fallback na cache jen offline
   if (url.includes('api.twelvedata.com') || url.includes('cdnjs.cloudflare.com') || url.includes('cdn.jsdelivr.net')) {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request))
@@ -40,7 +38,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Statické soubory aplikace — cache-first
+  // HTML / navigace — network-first, aby se nové nahrání na GitHub vždy projevilo
+  if (event.request.mode === 'navigate' || url.endsWith('.html') || url.endsWith('/')) {
+    event.respondWith(
+      fetch(event.request).then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return response;
+      }).catch(() => caches.match(event.request).then((c) => c || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // Ostatní statické soubory (ikony, manifest) — cache-first
   event.respondWith(
     caches.match(event.request).then((cached) => {
       return cached || fetch(event.request).then((response) => {
