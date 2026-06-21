@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1D9E75">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MTF Trader">
+<meta name="description" content="MTF Trading App — kalkulátor pozic, scanner, journal">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>MTF Trader</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg0:#f2f2f7;--bg1:#fff;--bg2:#f2f2f7;
+  --t1:#1c1c1e;--t2:#6e6e73;--t3:#aeaeb2;
+  --bd:#d1d1d6;--bd2:#e5e5ea;
+  --g:#1D9E75;--gl:#EAF3DE;--glt:#3B6D11;
+  --r:#E24B4A;--rl:#FCEBEB;--rlt:#A32D2D;
+  --a:#BA7517;--al:#FAEEDA;--alt:#854F0B;
+  --shadow:0 2px 10px rgba(0,0,0,.07);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+.dark{
+  --bg0:#000;--bg1:#1c1c1e;--bg2:#2c2c2e;
+  --t1:#fff;--t2:#aeaeb2;--t3:#6e6e73;
+  --bd:#3a3a3c;--bd2:#2c2c2e;
+  --gl:#1a3322;--glt:#6fcfa4;
+  --rl:#3a1515;--rlt:#f08080;
+  --al:#3a2800;--alt:#f0b440;
+  --shadow:0 2px 16px rgba(0,0,0,.45);
+}
+html,body{height:100%;background:var(--bg0);}
+body{display:flex;justify-content:center;align-items:flex-start;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden;}
+
+/* ── Phone shell (desktop) / full screen (mobile) ── */
+.ph{
+  width:100%;max-width:430px;height:100vh;
+  background:var(--bg1);
+  display:flex;flex-direction:column;
+  position:relative;overflow:hidden;
+}
+@media(min-width:500px){
+  .ph{border:1.5px solid var(--bd);border-radius:44px;height:96vh;max-height:860px;margin-top:2vh;box-shadow:var(--shadow);outline:9px solid var(--bg0);}
+}
+
+/* ── Status bar ── */
+.sb{
+  padding: calc(14px + var(--safe-top)) 24px 8px;
+  display:flex;justify-content:space-between;align-items:center;
+  background:var(--bg1);flex-shrink:0;
+}
+.sb-t{font-size:15px;font-weight:500;color:var(--t1);}
+.sb-r{display:flex;align-items:center;gap:10px;}
+.dm-btn{background:none;border:none;cursor:pointer;font-size:18px;color:var(--t2);padding:2px;}
+
+/* ── Header ── */
+.hd{padding:2px 22px 12px;border-bottom:.5px solid var(--bd2);background:var(--bg1);flex-shrink:0;}
+.ht{font-size:22px;font-weight:600;color:var(--t1);line-height:1.2;}
+.hs{font-size:12px;color:var(--t2);margin-top:2px;}
+
+/* ── Scrollable body ── */
+.body{flex:1;overflow-y:auto;padding:14px 18px 8px;background:var(--bg0);scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+.body::-webkit-scrollbar{display:none;}
+
+/* ── Bottom nav ── */
+.nav{
+  height:calc(64px + var(--safe-bottom));
+  padding-bottom:var(--safe-bottom);
+  border-top:.5px solid var(--bd2);
+  display:flex;background:var(--bg1);flex-shrink:0;
+}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;border:none;background:transparent;color:var(--t3);position:relative;padding-top:6px;}
+.nb i{font-size:21px;}.nb span{font-size:9.5px;letter-spacing:.01em;}
+.nb.on{color:var(--g);}
+.bdg{position:absolute;top:4px;right:8px;min-width:15px;height:15px;border-radius:8px;background:var(--r);color:#fff;font-size:9px;line-height:15px;text-align:center;padding:0 3px;display:none;}
+
+/* ── Tabs ── */
+.tp{display:none;}.tp.on{display:block;}
+
+/* ── Cards & layout ── */
+.card{background:var(--bg1);border-radius:16px;padding:13px 15px;margin-bottom:10px;box-shadow:var(--shadow);}
+.sl{font-size:10px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+.fi{margin-bottom:9px;}
+.fi label{display:block;font-size:11px;color:var(--t2);margin-bottom:4px;}
+.fi input,.fi select{width:100%;padding:10px 11px;font-size:15px;border:.5px solid var(--bd);border-radius:12px;background:var(--bg2);color:var(--t1);outline:none;-webkit-appearance:none;}
+.fi input:focus{border-color:var(--g);box-shadow:0 0 0 2px rgba(29,158,117,.14);}
+
+/* ── Buttons ── */
+.bp{width:100%;padding:13px;background:var(--g);color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:500;cursor:pointer;margin-bottom:8px;-webkit-tap-highlight-color:transparent;}
+.bp:active{opacity:.8;}
+.bs{width:100%;padding:11px;background:var(--bg2);color:var(--t1);border:.5px solid var(--bd);border-radius:14px;font-size:14px;cursor:pointer;margin-bottom:8px;}
+.pills{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
+.pi{padding:6px 12px;border-radius:20px;font-size:12px;cursor:pointer;border:.5px solid var(--bd);color:var(--t2);background:var(--bg2);-webkit-tap-highlight-color:transparent;}
+.pi.on{background:var(--g);color:#fff;border-color:var(--g);}
+.ref-btn{background:none;border:.5px solid var(--bd);border-radius:20px;padding:5px 13px;font-size:12px;color:var(--t2);cursor:pointer;}
+.ref-btn:disabled{opacity:.45;}
+
+/* ── Metric cells ── */
+.mc{background:var(--bg2);border-radius:11px;padding:9px 10px;}
+.ml{font-size:10px;color:var(--t2);margin-bottom:2px;}
+.mv{font-size:13px;font-weight:500;color:var(--t1);}
+.pos-c{color:var(--g)!important;}.neg-c{color:var(--r)!important;}.warn-c{color:var(--a)!important;}
+
+/* ── Warnings ── */
+.wn{background:var(--al);border-radius:10px;padding:9px 12px;font-size:12px;color:var(--alt);margin-bottom:9px;line-height:1.5;display:none;}
+.wn.on{display:block;}
+.alert-box{background:var(--rl);border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:var(--rlt);display:none;line-height:1.5;}
+.alert-box.on{display:block;}
+
+/* ── Result box ── */
+.res-box{border-radius:16px;padding:13px 15px;margin-bottom:10px;background:var(--g);}
+.rr-tr{height:7px;background:rgba(255,255,255,.25);border-radius:4px;overflow:hidden;margin-top:10px;display:flex;}
+.rr-ls{height:100%;background:rgba(255,100,100,.7);}.rr-rs{height:100%;background:rgba(100,255,180,.7);}
+
+/* ── Direction toggle ── */
+.dtog{display:grid;grid-template-columns:1fr 1fr;border:.5px solid var(--bd);border-radius:12px;overflow:hidden;margin-bottom:9px;}
+.db{padding:10px;text-align:center;font-size:13px;cursor:pointer;border:none;background:var(--bg2);color:var(--t2);}
+.db.onL{background:var(--gl);color:var(--glt);font-weight:500;}
+.db.onS{background:var(--rl);color:var(--rlt);font-weight:500;}
+
+/* ── Scanner cards ── */
+.sym-card{background:var(--bg1);border-radius:16px;padding:13px 15px;margin-bottom:10px;box-shadow:var(--shadow);cursor:pointer;border:1.5px solid transparent;transition:border-color .2s;-webkit-tap-highlight-color:transparent;}
+.sym-card:active{border-color:var(--g);}
+.sym-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.sym-name{font-size:17px;font-weight:700;color:var(--t1);}
+.sym-price{font-size:16px;font-weight:600;}
+.tf-row{display:flex;gap:5px;margin-bottom:9px;}
+.tf-b{flex:1;padding:6px 3px;border-radius:10px;text-align:center;}
+.tf-b .tf-lbl{font-size:9px;display:block;margin-bottom:1px;opacity:.7;}
+.tf-b .tf-val{font-size:10px;font-weight:700;}
+.tf-b.bull{background:var(--gl);color:var(--glt);}
+.tf-b.bear{background:var(--rl);color:var(--rlt);}
+.tf-b.neu{background:var(--bg2);color:var(--t2);}
+.ind-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:9px;}
+.ind{padding:3px 8px;border-radius:7px;font-size:10px;background:var(--bg2);color:var(--t2);}
+.ind.pos{background:var(--gl);color:var(--glt);}
+.ind.neg{background:var(--rl);color:var(--rlt);}
+.ind.warn{background:var(--al);color:var(--alt);}
+.score-wrap{margin-bottom:8px;}
+.score-lbl{display:flex;justify-content:space-between;font-size:10px;color:var(--t2);margin-bottom:3px;}
+.score-bar{height:6px;border-radius:3px;background:var(--bg2);overflow:hidden;}
+.score-fill{height:100%;border-radius:3px;transition:width .6s ease;}
+.sig-box{border-radius:11px;padding:9px 11px;font-size:12px;line-height:1.5;}
+.sig-box.bull{background:var(--gl);color:var(--glt);}
+.sig-box.bear{background:var(--rl);color:var(--rlt);}
+.sig-box.neu{background:var(--bg2);color:var(--t2);}
+.sig-title{font-weight:700;margin-bottom:2px;font-size:12px;}
+.load-card{background:var(--bg1);border-radius:16px;padding:18px 15px;margin-bottom:10px;text-align:center;box-shadow:var(--shadow);}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{display:inline-block;width:18px;height:18px;border:2px solid var(--bd);border-top-color:var(--g);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
+.err-card{background:var(--rl);border-radius:16px;padding:13px 15px;margin-bottom:10px;font-size:12px;color:var(--rlt);line-height:1.5;}
+.err-title{font-weight:700;margin-bottom:4px;font-size:13px;}
+.log-box{background:var(--bg2);border-radius:10px;padding:9px 11px;margin-bottom:10px;font-size:11px;color:var(--t2);line-height:1.7;font-family:monospace;max-height:80px;overflow-y:auto;}
+
+/* ── Position & journal cards ── */
+.pc,.jc{background:var(--bg1);border-radius:14px;padding:12px 14px;margin-bottom:8px;box-shadow:var(--shadow);}
+.badge{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;}
+.bL{background:var(--gl);color:var(--glt);}.bS{background:var(--rl);color:var(--rlt);}
+.delbtn{background:none;border:none;cursor:pointer;color:var(--r);font-size:22px;line-height:1;padding:0 2px;}
+.pftr{display:flex;justify-content:space-between;margin-top:8px;border-top:.5px solid var(--bd2);padding-top:8px;font-size:11px;color:var(--t2);}
+.stat{background:var(--bg1);border-radius:12px;padding:10px 12px;box-shadow:var(--shadow);}
+.em{text-align:center;padding:28px 16px;color:var(--t2);}
+.em i{font-size:36px;margin-bottom:10px;display:block;}
+.em p{font-size:13px;line-height:1.5;}
+.erow{display:flex;justify-content:space-between;padding:7px 0;border-bottom:.5px solid var(--bd2);font-size:13px;}.erow:last-child{border-bottom:none;}
+.tip-box{background:var(--bg1);border-radius:12px;padding:12px 14px;margin-top:10px;box-shadow:var(--shadow);}
+.tip-row{display:flex;gap:8px;align-items:flex-start;padding:4px 0;font-size:12px;color:var(--t2);line-height:1.5;}
+.tip-row i{font-size:13px;margin-top:1px;flex-shrink:0;color:var(--g);}
+</style>
+</head>
+<body>
+<div class="ph" id="ph">
+
+  <!-- Status bar -->
+  <div class="sb">
+    <span class="sb-t" id="clk"></span>
+    <div class="sb-r">
+      <span id="apiSt" style="font-size:10px;color:var(--t2);">○ –</span>
+      <button class="dm-btn" onclick="toggleDark()" id="dmb" title="Dark mode">🌙</button>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="hd">
+    <div class="ht" id="hT">MTF Scanner</div>
+    <div class="hs" id="hS">Twelve Data — živá tržní data</div>
+  </div>
+
+  <!-- Body -->
+  <div class="body" id="body">
+
+    <!-- ─── SCANNER ─── -->
+    <div class="tp on" id="tp-scan">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div class="sl" style="margin:0;">Sledované instrumenty</div>
+        <button class="ref-btn" id="refBtn" onclick="startScan()">↻ Načíst data</button>
+      </div>
+      <div class="pills" id="symPills">
+        <button class="pi on" data-sym="XAU/USD" onclick="toggleSym(this)">XAUUSD</button>
+        <button class="pi on" data-sym="BTC/USD" onclick="toggleSym(this)">BTCUSD</button>
+        <button class="pi on" data-sym="ETH/USD" onclick="toggleSym(this)">ETHUSD</button>
+        <button class="pi" data-sym="EUR/USD" onclick="toggleSym(this)">EURUSD</button>
+        <button class="pi" data-sym="GBP/USD" onclick="toggleSym(this)">GBPUSD</button>
+        <button class="pi" data-sym="AAPL" onclick="toggleSym(this)">AAPL</button>
+      </div>
+      <div class="log-box" id="logBox">Připraven. Stiskni ↻ Načíst data.</div>
+      <div id="scanCards"></div>
+    </div>
+
+    <!-- ─── KALKULÁTOR ─── -->
+    <div class="tp" id="tp-calc">
+      <div class="alert-box" id="alertBox"></div>
+      <div class="card">
+        <div class="sl">Nastavení účtu</div>
+        <div class="g2">
+          <div class="fi"><label>Zůstatek ($)</label><input type="number" id="bal" value="2161" inputmode="decimal" oninput="calc()"></div>
+          <div class="fi"><label>Riziko (%)</label><input type="number" id="rp" value="1" min="0.1" max="10" step="0.1" inputmode="decimal" oninput="calc()"></div>
+        </div>
+        <div class="fi"><label>Denní limit ztráty (%)</label><input type="number" id="dlim" value="3" step="0.5" inputmode="decimal" oninput="chkLim()"></div>
+      </div>
+      <div class="card">
+        <div class="sl">Instrument <span id="calcSrc" style="color:var(--g);font-weight:400;font-size:10px;"></span></div>
+        <div class="pills" id="calcPills">
+          <button class="pi on" onclick="selI(this,'XAU/USD',0.01,100)">XAUUSD</button>
+          <button class="pi" onclick="selI(this,'BTC/USD',1,1)">BTCUSD</button>
+          <button class="pi" onclick="selI(this,'ETH/USD',1,1)">ETHUSD</button>
+          <button class="pi" onclick="selI(this,'EUR/USD',0.00001,100000)">EURUSD</button>
+          <button class="pi" onclick="selI(this,'GBP/USD',0.00001,100000)">GBPUSD</button>
+        </div>
+        <div class="dtog">
+          <button class="db onL" id="dL" onclick="setDir('long')">▲ Long (nákup)</button>
+          <button class="db" id="dS" onclick="setDir('short')">▼ Short (prodej)</button>
+        </div>
+        <div class="g3">
+          <div class="fi"><label>Vstupní cena</label><input type="number" id="en" value="" step="0.01" inputmode="decimal" oninput="calc()"></div>
+          <div class="fi"><label>Stop Loss</label><input type="number" id="sl2" value="" step="0.01" inputmode="decimal" oninput="calc()"></div>
+          <div class="fi"><label>Take Profit</label><input type="number" id="tp2" value="" step="0.01" inputmode="decimal" oninput="calc()"></div>
+        </div>
+      </div>
+      <div class="wn" id="wn"></div>
+      <div class="res-box">
+        <div style="font-size:11px;color:rgba(255,255,255,.75);margin-bottom:4px;">Doporučená velikost pozice</div>
+        <div style="font-size:32px;font-weight:600;color:#fff;" id="rL">– lotů</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.75);margin-top:2px;" id="rS">Vyplň vstup a SL</div>
+        <div class="rr-tr" id="rrT" style="display:none;"><div class="rr-ls" id="rrL" style="width:30%"></div><div class="rr-rs" id="rrR" style="width:70%"></div></div>
+      </div>
+      <div class="g3" style="margin-bottom:10px;">
+        <div class="mc"><div class="ml">Riziko $</div><div class="mv neg-c" id="mRi">–</div></div>
+        <div class="mc"><div class="ml">Potenciál</div><div class="mv pos-c" id="mPr">–</div></div>
+        <div class="mc"><div class="ml">R:R poměr</div><div class="mv" id="mRR">–</div></div>
+        <div class="mc"><div class="ml">% účtu</div><div class="mv" id="mPct">–</div></div>
+        <div class="mc"><div class="ml">ATR 1H</div><div class="mv warn-c" id="mATR">–</div></div>
+        <div class="mc"><div class="ml">Hodnota poz.</div><div class="mv" id="mPV">–</div></div>
+      </div>
+      <button class="bp" onclick="addPos()"><i class="ti ti-circle-plus" style="font-size:15px;vertical-align:-2px;margin-right:5px;"></i>Přidat do sledování pozic</button>
+      <button class="bs" onclick="closePos()"><i class="ti ti-check" style="font-size:14px;vertical-align:-1px;margin-right:5px;"></i>Uzavřít → zapsat do journalu</button>
+    </div>
+
+    <!-- ─── POZICE ─── -->
+    <div class="tp" id="tp-pos">
+      <div id="tbar" style="display:none;background:var(--gl);border-radius:14px;padding:12px 14px;margin-bottom:10px;">
+        <div class="sl" style="color:var(--glt);margin-bottom:8px;">Celková expozice</div>
+        <div class="g3">
+          <div><div style="font-size:10px;color:var(--t2);">Pozic</div><div style="font-size:16px;font-weight:600;color:var(--t1);" id="tC">0</div></div>
+          <div><div style="font-size:10px;color:var(--t2);">Celk. riziko</div><div style="font-size:16px;font-weight:600;color:var(--r);" id="tR">$0</div></div>
+          <div><div style="font-size:10px;color:var(--t2);">Potenciál</div><div style="font-size:16px;font-weight:600;color:var(--g);" id="tP">$0</div></div>
+        </div>
+      </div>
+      <div class="em" id="emP"><i class="ti ti-chart-candle"></i><p>Žádné otevřené pozice.<br>Přidej z kalkulátoru.</p></div>
+      <div id="plist"></div>
+    </div>
+
+    <!-- ─── JOURNAL ─── -->
+    <div class="tp" id="tp-jnl">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div class="stat"><div style="font-size:10px;color:var(--t2);">Obchodů</div><div style="font-size:18px;font-weight:600;color:var(--t1);" id="jTotal">0</div></div>
+        <div class="stat"><div style="font-size:10px;color:var(--t2);">Win rate</div><div style="font-size:18px;font-weight:600;" id="jWR">–</div></div>
+        <div class="stat"><div style="font-size:10px;color:var(--t2);">Celkový P&L</div><div style="font-size:18px;font-weight:600;" id="jPL">$0</div></div>
+        <div class="stat"><div style="font-size:10px;color:var(--t2);">Prům. R:R</div><div style="font-size:18px;font-weight:600;color:var(--t1);" id="jRR">–</div></div>
+      </div>
+      <div class="card"><div class="sl">Equity křivka</div><canvas id="eqChart" height="115"></canvas></div>
+      <div class="em" id="emJ"><i class="ti ti-notebook"></i><p>Journal je prázdný.<br>Uzavři obchod z kalkulátoru.</p></div>
+      <div id="jlist"></div>
+    </div>
+
+    <!-- ─── EXPORT ─── -->
+    <div class="tp" id="tp-exp">
+      <div class="card">
+        <div class="sl">Shrnutí účtu</div>
+        <div class="erow"><span style="color:var(--t2);">Zůstatek</span><span style="font-weight:500;" id="xBal">–</span></div>
+        <div class="erow"><span style="color:var(--t2);">Riziko / obchod</span><span style="font-weight:500;" id="xRp">–</span></div>
+        <div class="erow"><span style="color:var(--t2);">Denní limit ztráty</span><span style="font-weight:500;color:var(--r);" id="xDL">–</span></div>
+        <div class="erow"><span style="color:var(--t2);">Otevřené pozice</span><span style="font-weight:500;" id="xCnt">–</span></div>
+        <div class="erow"><span style="color:var(--t2);">Uzavřených (journal)</span><span style="font-weight:500;" id="xJC">–</span></div>
+        <div class="erow"><span style="color:var(--t2);">Celkový P&L</span><span style="font-weight:500;color:var(--g);" id="xJPL">–</span></div>
+        <div class="erow"><span style="color:var(--t2);">Win rate</span><span style="font-weight:500;" id="xWR">–</span></div>
+        <div class="erow"><span style="color:var(--t2);">Vygenerováno</span><span style="font-size:11px;color:var(--t2);" id="xDt">–</span></div>
+      </div>
+      <button class="bp" onclick="expPDF()"><i class="ti ti-file-type-pdf" style="font-size:15px;vertical-align:-2px;margin-right:5px;"></i>Exportovat PDF report</button>
+      <button class="bs" onclick="expCSV()"><i class="ti ti-table-export" style="font-size:15px;vertical-align:-2px;margin-right:5px;"></i>Exportovat CSV přehled</button>
+      <div class="tip-box">
+        <div class="sl" style="margin-bottom:6px;">Pravidla risk managementu</div>
+        <div class="tip-row"><i class="ti ti-check"></i>Vždy nastav SL před otevřením pozice</div>
+        <div class="tip-row"><i class="ti ti-check"></i>Nikdy neriskuj více než 2 % na jeden obchod</div>
+        <div class="tip-row"><i class="ti ti-check"></i>Celkové riziko všech pozic udržuj pod 6 % účtu</div>
+        <div class="tip-row"><i class="ti ti-check"></i>Hledej R:R minimálně 1:1,5</div>
+        <div class="tip-row"><i class="ti ti-check"></i>Po dosažení denního limitu přestaň obchodovat</div>
+      </div>
+    </div>
+
+  </div><!-- /body -->
+
+  <!-- Bottom nav -->
+  <div class="nav">
+    <button class="nb on" id="nb-scan" onclick="swT('scan')"><i class="ti ti-radar"></i><span>Scanner</span></button>
+    <button class="nb" id="nb-calc" onclick="swT('calc')"><i class="ti ti-calculator"></i><span>Kalkulátor</span></button>
+    <button class="nb" id="nb-pos" onclick="swT('pos')"><i class="ti ti-list-check"></i><span>Pozice</span><span class="bdg" id="bP"></span></button>
+    <button class="nb" id="nb-jnl" onclick="swT('jnl')"><i class="ti ti-notebook"></i><span>Journal</span><span class="bdg" id="bJ"></span></button>
+    <button class="nb" id="nb-exp" onclick="swT('exp')"><i class="ti ti-download"></i><span>Export</span></button>
+  </div>
+
+</div><!-- /ph -->
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────
+const API_KEY = 'VLOZ_SVUJ_API_KLIC'; // <-- sem vlož svůj Twelve Data klíč
+
+// ─── STATE ────────────────────────────────────────────────
+let dark = false, dir = 'long';
+let ID = { pip: 0.01, contract: 100, name: 'XAU/USD' };
+let positions = [], journal = [], eqChart = null, lastC = {};
+let activeSyms = ['XAU/USD', 'BTC/USD', 'ETH/USD'];
+let scanning = false;
+
+// ─── CLOCK ────────────────────────────────────────────────
+function clk() { document.getElementById('clk').textContent = new Date().toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' }); }
+clk(); setInterval(clk, 20000);
+
+// ─── DARK MODE ────────────────────────────────────────────
+function toggleDark() {
+  dark = !dark;
+  document.getElementById('ph').classList.toggle('dark', dark);
+  document.getElementById('dmb').textContent = dark ? '☀️' : '🌙';
+  localStorage.setItem('dark', dark ? '1' : '0');
+}
+if (localStorage.getItem('dark') === '1') { dark = true; document.getElementById('ph').classList.add('dark'); document.getElementById('dmb').textContent = '☀️'; }
+
+// ─── LOG ──────────────────────────────────────────────────
+function log(msg, type = 'info') {
+  const el = document.getElementById('logBox');
+  const c = type === 'ok' ? 'var(--g)' : type === 'err' ? 'var(--r)' : type === 'warn' ? 'var(--a)' : 'var(--t2)';
+  const t = new Date().toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  el.innerHTML += `<span style="color:${c}">[${t}] ${msg}</span>\n`;
+  el.scrollTop = el.scrollHeight;
+}
+function setApiSt(s, c) { const el = document.getElementById('apiSt'); el.textContent = s; el.style.color = c; }
+
+// ─── API ──────────────────────────────────────────────────
+const BASE = 'https://api.twelvedata.com';
+const delay = ms => new Promise(r => setTimeout(r, ms));
+
+async function fetchCandles(symbol, interval, outputsize = 55) {
+  const url = `${BASE}/time_series?symbol=${encodeURIComponent(symbol)}&interval=${interval}&outputsize=${outputsize}&apikey=${API_KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.status === 'error') throw new Error(data.message || 'API error');
+  if (!data.values || !data.values.length) throw new Error('Žádná data pro ' + symbol);
+  return data.values.reverse();
+}
+
+// ─── INDICATORS ───────────────────────────────────────────
+const closes = c => c.map(x => parseFloat(x.close));
+
+function ema(arr, n) {
+  if (arr.length < n) n = arr.length;
+  const k = 2 / (n + 1);
+  let e = arr.slice(0, n).reduce((a, b) => a + b, 0) / n;
+  const out = new Array(n - 1).fill(null); out.push(e);
+  for (let i = n; i < arr.length; i++) { e = arr[i] * k + e * (1 - k); out.push(e); }
+  return out;
+}
+
+function rsi(arr, n = 14) {
+  if (arr.length < n + 2) return null;
+  let ag = 0, al = 0;
+  for (let i = 1; i <= n; i++) { const d = arr[i] - arr[i - 1]; if (d > 0) ag += d; else al -= d; }
+  ag /= n; al /= n;
+  for (let i = n + 1; i < arr.length; i++) { const d = arr[i] - arr[i - 1]; ag = (ag * (n - 1) + (d > 0 ? d : 0)) / n; al = (al * (n - 1) + (d < 0 ? -d : 0)) / n; }
+  return al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+}
+
+function atr(candles, n = 14) {
+  if (candles.length < 2) return 0;
+  const tr = candles.map((c, i) => {
+    if (i === 0) return parseFloat(c.high) - parseFloat(c.low);
+    const pc = parseFloat(candles[i - 1].close);
+    return Math.max(parseFloat(c.high) - parseFloat(c.low), Math.abs(parseFloat(c.high) - pc), Math.abs(parseFloat(c.low) - pc));
+  });
+  const sl = Math.min(n, tr.length);
+  let a = tr.slice(0, sl).reduce((s, v) => s + v, 0) / sl;
+  for (let i = sl; i < tr.length; i++) a = (a * (sl - 1) + tr[i]) / sl;
+  return a;
+}
+
+function analyzeTF(candles) {
+  if (!candles || candles.length < 10) return { trend: 'neu', score: 50, rsiV: null, atrV: 0, label: '–', e20: null, e50: null, last: 0 };
+  const cl = closes(candles);
+  const last = cl[cl.length - 1];
+  const e20arr = ema(cl, Math.min(20, cl.length));
+  const e50arr = ema(cl, Math.min(50, cl.length));
+  const e20 = e20arr[e20arr.length - 1];
+  const e50 = e50arr[e50arr.length - 1];
+  const rsiV = rsi(cl, Math.min(14, cl.length - 2));
+  const atrV = atr(candles, Math.min(14, candles.length - 1));
+  let score = 50;
+  if (e20 !== null) { if (last > e20) score += 15; else score -= 15; }
+  if (e50 !== null) { if (last > e50) score += 15; else score -= 15; }
+  if (e20 !== null && e50 !== null) { if (e20 > e50) score += 10; else score -= 10; }
+  if (rsiV !== null) { if (rsiV > 55) score += 10; else if (rsiV < 45) score -= 10; }
+  score = Math.max(0, Math.min(100, score));
+  const trend = score >= 65 ? 'bull' : score <= 35 ? 'bear' : 'neu';
+  const label = trend === 'bull' ? '▲ BULL' : trend === 'bear' ? '▼ BEAR' : '→ NEU';
+  return { trend, score, rsiV, atrV, e20, e50, label, last };
+}
+
+// ─── SCANNER ──────────────────────────────────────────────
+async function startScan() {
+  if (scanning) return;
+  scanning = true;
+  const btn = document.getElementById('refBtn');
+  btn.disabled = true; btn.textContent = 'Načítám…';
+  document.getElementById('scanCards').innerHTML = '';
+  document.getElementById('logBox').innerHTML = '';
+  setApiSt('● FETCH', 'var(--a)');
+  log('Spouštím scan pro ' + activeSyms.length + ' instrumentů…');
+  log('Sekvenční volání — 900ms prodleva (rate limit free plánu)', 'warn');
+
+  for (const sym of activeSyms) {
+    const short = sym.replace('/', '');
+    const ph = document.createElement('div');
+    ph.className = 'load-card'; ph.id = 'lc-' + short;
+    ph.innerHTML = `<span class="spin"></span><span style="font-size:13px;color:var(--t2);">Načítám ${short}…</span>`;
+    document.getElementById('scanCards').appendChild(ph);
+    try {
+      log(`${short}: načítám 1H…`);
+      const c1h = await fetchCandles(sym, '1h', 55);
+      await delay(900);
+      log(`${short}: načítám 1D…`);
+      const c1d = await fetchCandles(sym, '1day', 55);
+      await delay(900);
+      const a1h = analyzeTF(c1h), a1d = analyzeTF(c1d);
+      const price = a1h.last;
+      const overall = Math.round((a1h.score + a1d.score * 1.5) / 2.5);
+      const sig = overall >= 62 ? 'bull' : overall <= 38 ? 'bear' : 'neu';
+      const atrV = a1h.atrV;
+      log(`${short}: ✓ skóre ${overall} → ${sig.toUpperCase()}`, 'ok');
+      document.getElementById('lc-' + short).outerHTML = buildCard({ sym, price, a1h, a1d, overall, sig, atrV });
+    } catch (e) {
+      log(`${short}: ✗ ${e.message}`, 'err');
+      document.getElementById('lc-' + short).outerHTML = `<div class="err-card"><div class="err-title">✗ ${short} — chyba</div><div>${e.message}</div>${e.message.includes('rate') || e.message.includes('limit') ? '<div style="margin-top:4px;">⚠️ Rate limit — počkej minutu.</div>' : ''}</div>`;
+    }
+    if (sym !== activeSyms[activeSyms.length - 1]) await delay(900);
+  }
+  setApiSt('● LIVE', 'var(--g)');
+  log('Scan dokončen.', 'ok');
+  scanning = false; btn.disabled = false; btn.textContent = '↻ Načíst data';
+}
+
+function buildCard(d) {
+  const p = d.price;
+  const pFmt = p > 1000 ? p.toFixed(2) : p > 10 ? p.toFixed(2) : p.toFixed(5);
+  const pC = d.sig === 'bull' ? 'var(--g)' : d.sig === 'bear' ? 'var(--r)' : 'var(--t2)';
+  const slS = d.sig === 'bull' ? (p - d.atrV * 1.5).toFixed(2) : (p + d.atrV * 1.5).toFixed(2);
+  const tpS = d.sig === 'bull' ? (p + d.atrV * 2.5).toFixed(2) : (p - d.atrV * 2.5).toFixed(2);
+  const sigTxt = d.sig === 'bull' ? `Long setup: SL ${slS} (1.5×ATR) → TP ${tpS} (2.5×ATR)` : d.sig === 'bear' ? `Short setup: SL ${slS} (1.5×ATR) → TP ${tpS} (2.5×ATR)` : 'Smíšené signály — počkej na potvrzení.';
+  const sigIcon = d.sig === 'bull' ? '🟢 LONG signal' : d.sig === 'bear' ? '🔴 SHORT signal' : '⚪ Žádný signal';
+  return `<div class="sym-card" onclick="loadCalc('${d.sym}',${p},${d.atrV},'${d.sig}')">
+    <div class="sym-hdr">
+      <div><div class="sym-name">${d.sym.replace('/', '')}</div><div style="font-size:10px;color:var(--t2);">Klikni → předvyplnit kalkulátor</div></div>
+      <div style="text-align:right;"><div class="sym-price" style="color:${pC}">$${pFmt}</div><div style="font-size:10px;color:${pC};">${d.sig === 'bull' ? '▲ Bullish' : d.sig === 'bear' ? '▼ Bearish' : '→ Neutrál'}</div></div>
+    </div>
+    <div class="tf-row">
+      <div class="tf-b ${d.a1h.trend}"><span class="tf-lbl">1H</span><span class="tf-val">${d.a1h.label}</span></div>
+      <div class="tf-b ${d.a1d.trend}"><span class="tf-lbl">1D</span><span class="tf-val">${d.a1d.label}</span></div>
+    </div>
+    <div class="ind-row">
+      ${d.a1h.rsiV !== null ? `<span class="ind ${d.a1h.rsiV > 60 ? 'pos' : d.a1h.rsiV < 40 ? 'neg' : ''}">RSI ${d.a1h.rsiV.toFixed(0)}</span>` : ''}
+      <span class="ind warn">ATR ${d.atrV.toFixed(2)}</span>
+      <span class="ind ${d.a1h.e20 > d.a1h.e50 ? 'pos' : 'neg'}">EMA ${d.a1h.e20 > d.a1h.e50 ? '▲' : '▼'}</span>
+      <span class="ind ${d.a1d.trend === 'bull' ? 'pos' : d.a1d.trend === 'bear' ? 'neg' : ''}">1D ${d.a1d.label}</span>
+    </div>
+    <div class="score-wrap">
+      <div class="score-lbl"><span>Bear 0</span><span>Skóre: ${d.overall}/100</span><span>100 Bull</span></div>
+      <div class="score-bar"><div class="score-fill" style="width:${d.overall}%;background:${d.sig === 'bull' ? 'var(--g)' : d.sig === 'bear' ? 'var(--r)' : 'var(--t2)'}"></div></div>
+    </div>
+    <div class="sig-box ${d.sig}"><div class="sig-title">${sigIcon}</div><div style="font-size:11px;">${sigTxt}</div></div>
+  </div>`;
+}
+
+function toggleSym(el) {
+  const sym = el.getAttribute('data-sym');
+  if (activeSyms.includes(sym)) { if (activeSyms.length <= 1) return; activeSyms = activeSyms.filter(s => s !== sym); el.classList.remove('on'); }
+  else { activeSyms.push(sym); el.classList.add('on'); }
+}
+
+function loadCalc(sym, price, atrV, sig) {
+  const pip = sym.includes('JPY') ? 0.001 : sym.includes('XAU') ? 0.01 : (sym.includes('BTC') || sym.includes('ETH')) ? 1 : 0.00001;
+  const contract = sym.includes('XAU') ? 100 : (sym.includes('BTC') || sym.includes('ETH')) ? 1 : 100000;
+  ID = { pip, contract, name: sym };
+  document.querySelectorAll('#calcPills .pi').forEach(p => p.classList.remove('on'));
+  setDir(sig === 'bull' ? 'long' : 'short');
+  document.getElementById('en').value = price.toFixed(2);
+  const slD = atrV * 1.5, tpD = atrV * 2.5;
+  if (sig === 'bull') { document.getElementById('sl2').value = (price - slD).toFixed(2); document.getElementById('tp2').value = (price + tpD).toFixed(2); }
+  else { document.getElementById('sl2').value = (price + slD).toFixed(2); document.getElementById('tp2').value = (price - tpD).toFixed(2); }
+  document.getElementById('mATR').textContent = atrV.toFixed(2);
+  document.getElementById('calcSrc').textContent = '← z MTF scanner';
+  calc(); swT('calc');
+}
+
+// ─── CALCULATOR ───────────────────────────────────────────
+async function selI(el, sym, pip, contract) {
+  document.querySelectorAll('#calcPills .pi').forEach(p => p.classList.remove('on'));
+  el.classList.add('on');
+  ID = { pip, contract, name: sym };
+  document.getElementById('calcSrc').textContent = 'načítám cenu…';
+  try {
+    const candles = await fetchCandles(sym, '1h', 20);
+    const price = parseFloat(candles[candles.length - 1].close);
+    const atrV = atr(candles, Math.min(14, candles.length - 1));
+    document.getElementById('en').value = price.toFixed(2);
+    document.getElementById('sl2').value = (price - atrV * 1.5).toFixed(2);
+    document.getElementById('tp2').value = (price + atrV * 2.5).toFixed(2);
+    document.getElementById('mATR').textContent = atrV.toFixed(2);
+    document.getElementById('calcSrc').textContent = '● live cena';
+  } catch (e) { document.getElementById('calcSrc').textContent = '✗ chyba: ' + e.message; }
+  calc();
+}
+
+function setDir(d) {
+  dir = d;
+  document.getElementById('dL').className = 'db' + (d === 'long' ? ' onL' : '');
+  document.getElementById('dS').className = 'db' + (d === 'short' ? ' onS' : '');
+  calc();
+}
+
+function f(n, d = 2) { return isFinite(n) ? Math.abs(n).toFixed(d) : '–'; }
+
+function calc() {
+  const bal = +document.getElementById('bal').value || 0;
+  const rp = +document.getElementById('rp').value || 1;
+  const en = +document.getElementById('en').value || 0;
+  const sl = +document.getElementById('sl2').value || 0;
+  const tp = +document.getElementById('tp2').value || 0;
+  const { pip, contract } = ID;
+  const riskAmt = bal * rp / 100;
+  const slD = Math.abs(en - sl), tpD = tp ? Math.abs(en - tp) : 0;
+  const lots = slD > 0 ? riskAmt / (slD * contract) : 0;
+  const lr = Math.floor(lots * 100) / 100;
+  const aRisk = lr * slD * contract;
+  const pot = tpD > 0 ? lr * tpD * contract : 0;
+  const rr = tpD > 0 && slD > 0 ? tpD / slD : 0;
+  const posVal = lr * en * contract;
+  const slOk = dir === 'long' ? sl < en : sl > en;
+  const tpOk = !tp || (dir === 'long' ? tp > en : tp < en);
+  const w = [];
+  if (slD === 0) w.push('SL je stejný jako vstupní cena.');
+  if (!slOk && slD > 0) w.push('SL je na špatné straně pro ' + (dir === 'long' ? 'Long' : 'Short') + '.');
+  if (tp && !tpOk) w.push('TP je na špatné straně od vstupu.');
+  if (rp > 3) w.push('Riziko ' + rp + '% překračuje doporučenou hranici 2%.');
+  if (rr > 0 && rr < 1) w.push('R:R 1:' + f(rr) + ' je pod doporučenou hodnotou 1:1.');
+  const wn = document.getElementById('wn');
+  wn.textContent = w.join(' '); wn.className = 'wn' + (w.length ? ' on' : '');
+  document.getElementById('rL').textContent = lr > 0 ? f(lr, 2) + ' lotů' : '– lotů';
+  document.getElementById('rS').textContent = 'Riziko $' + f(aRisk) + ' | ' + f(aRisk / bal * 100, 2) + '% účtu';
+  document.getElementById('mRi').textContent = '-$' + f(aRisk);
+  document.getElementById('mPr').textContent = tp ? '+$' + f(pot) : '—';
+  document.getElementById('mRR').textContent = rr > 0 ? '1:' + f(rr) : '—';
+  document.getElementById('mPct').textContent = bal > 0 ? f(aRisk / bal * 100, 2) + '%' : '–';
+  document.getElementById('mPV').textContent = '$' + Math.round(posVal).toLocaleString('cs');
+  const rrT = document.getElementById('rrT');
+  if (rr > 0 && tpD > 0) { rrT.style.display = 'flex'; const tot = slD + tpD; document.getElementById('rrL').style.width = (slD / tot * 100).toFixed(1) + '%'; document.getElementById('rrR').style.width = (tpD / tot * 100).toFixed(1) + '%'; }
+  else rrT.style.display = 'none';
+  lastC = { bal, rp, en, sl, tp, lots: lr, aRisk, pot, rr, name: ID.name, dir, slD, tpD, posVal };
+  chkLim();
+}
+
+function chkLim() {
+  const bal = +document.getElementById('bal').value || 0;
+  const dlim = +document.getElementById('dlim').value || 3;
+  const today = new Date().toDateString();
+  const loss = journal.filter(j => new Date(j.ts).toDateString() === today && j.pl < 0).reduce((s, j) => s + Math.abs(j.pl), 0);
+  const limit = bal * dlim / 100;
+  const ab = document.getElementById('alertBox');
+  if (loss >= limit) { ab.className = 'alert-box on'; ab.textContent = '⚠️ Denní limit ztráty dosažen! Ztráta dnes: $' + loss.toFixed(2) + ' / limit $' + limit.toFixed(2) + '. Přestaň obchodovat.'; }
+  else ab.className = 'alert-box';
+}
+
+// ─── POSITIONS ────────────────────────────────────────────
+function addPos() {
+  const { lots, aRisk, pot, rr, name, dir, en, sl, tp } = lastC;
+  if (!lots || lots <= 0) { alert('Nejprve správně vyplň kalkulátor.'); return; }
+  positions.push({ id: Date.now(), name, dir, lots, entry: en, sl, tp, risk: aRisk, profit: pot, rr });
+  save(); renderPos(); badge(); swT('pos');
+}
+
+function closePos() {
+  const { lots, aRisk, pot, rr, name, dir, en, sl, tp } = lastC;
+  if (!lots || lots <= 0) { alert('Nejprve vyplň kalkulátor.'); return; }
+  const pl = prompt('Skutečný zisk/ztráta obchodu v USD\n(záporné číslo = ztráta):');
+  if (pl === null) return;
+  const plN = parseFloat(pl);
+  if (isNaN(plN)) { alert('Neplatné číslo.'); return; }
+  journal.push({ id: Date.now(), ts: new Date().toISOString(), name, dir, lots, entry: en, sl, tp, risk: aRisk, profit: pot, rr, pl: plN });
+  save(); renderJnl(); badge(); chkLim(); swT('jnl');
+}
+
+function delPos(id) { positions = positions.filter(p => p.id !== id); save(); renderPos(); badge(); }
+function delJnl(id) { journal = journal.filter(j => j.id !== id); save(); renderJnl(); }
+
+function renderPos() {
+  const em = document.getElementById('emP'), tb = document.getElementById('tbar'), list = document.getElementById('plist');
+  if (!positions.length) { em.style.display = 'block'; tb.style.display = 'none'; list.innerHTML = ''; return; }
+  em.style.display = 'none'; tb.style.display = 'block';
+  const tR = positions.reduce((s, p) => s + p.risk, 0), tP = positions.reduce((s, p) => s + p.profit, 0);
+  document.getElementById('tC').textContent = positions.length;
+  document.getElementById('tR').textContent = '-$' + tR.toFixed(2);
+  document.getElementById('tP').textContent = '+$' + tP.toFixed(2);
+  list.innerHTML = positions.map(p => `<div class="pc">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font-size:15px;font-weight:500;color:var(--t1);">${p.name.replace('/', '')}</span>
+      <div style="display:flex;align-items:center;gap:7px;"><span class="badge ${p.dir === 'long' ? 'bL' : 'bS'}">${p.dir === 'long' ? 'Long' : 'Short'}</span><button class="delbtn" onclick="delPos(${p.id})">×</button></div>
+    </div>
+    <div class="g3">
+      <div class="mc"><div class="ml">Loty</div><div class="mv">${p.lots.toFixed(2)}</div></div>
+      <div class="mc"><div class="ml">Vstup</div><div class="mv">${p.entry}</div></div>
+      <div class="mc"><div class="ml">SL</div><div class="mv">${p.sl || '–'}</div></div>
+    </div>
+    <div class="pftr">
+      <span style="color:var(--r);">-$${p.risk.toFixed(2)}</span>
+      ${p.profit > 0 ? `<span style="color:var(--g);">+$${p.profit.toFixed(2)}</span>` : ''}
+      ${p.rr > 0 ? `<span>R:R 1:${p.rr.toFixed(2)}</span>` : ''}
+    </div></div>`).join('');
+}
+
+function renderJnl() {
+  const n = journal.length, wins = journal.filter(j => j.pl > 0).length;
+  const totalPL = journal.reduce((s, j) => s + j.pl, 0);
+  const avgRR = n ? journal.reduce((s, j) => s + (j.rr || 0), 0) / n : 0;
+  document.getElementById('jTotal').textContent = n;
+  const wr = document.getElementById('jWR'); wr.textContent = n ? Math.round(wins / n * 100) + '%' : '–'; wr.style.color = n && wins / n >= 0.5 ? 'var(--g)' : 'var(--r)';
+  const pl = document.getElementById('jPL'); pl.textContent = (totalPL >= 0 ? '+' : '') + `$${Math.abs(totalPL).toFixed(2)}`; pl.style.color = totalPL >= 0 ? 'var(--g)' : 'var(--r)';
+  document.getElementById('jRR').textContent = n ? '1:' + avgRR.toFixed(2) : '–';
+  let cum = 0; const eq = journal.map(j => { cum += j.pl; return Math.round(cum * 100) / 100; });
+  const ctx = document.getElementById('eqChart').getContext('2d');
+  if (eqChart) eqChart.destroy();
+  const tc = dark ? 'rgba(255,255,255,.4)' : 'rgba(0,0,0,.35)';
+  const gc = dark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.04)';
+  eqChart = new Chart(ctx, { type: 'line', data: { labels: journal.map((_, i) => '#' + (i + 1)), datasets: [{ data: eq, borderColor: totalPL >= 0 ? '#1D9E75' : '#E24B4A', backgroundColor: totalPL >= 0 ? 'rgba(29,158,117,.1)' : 'rgba(226,75,74,.1)', borderWidth: 2, fill: true, pointRadius: n < 20 ? 3 : 0, tension: .35 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: tc, font: { size: 9 }, maxTicksLimit: 6 }, grid: { color: gc } }, y: { ticks: { color: tc, font: { size: 9 }, callback: v => '$' + v }, grid: { color: gc } } } } });
+  const em = document.getElementById('emJ'), list = document.getElementById('jlist');
+  if (!n) { em.style.display = 'block'; list.innerHTML = ''; return; }
+  em.style.display = 'none';
+  list.innerHTML = journal.slice().reverse().map(j => `<div class="jc">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+      <span style="font-size:14px;font-weight:500;color:var(--t1);">${j.name.replace('/', '')}</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:15px;font-weight:600;color:${j.pl >= 0 ? 'var(--g)' : 'var(--r)'};">${j.pl >= 0 ? '+' : ''}$${Math.abs(j.pl).toFixed(2)}</span>
+        <button class="delbtn" onclick="delJnl(${j.id})">×</button>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--t2);display:flex;gap:10px;flex-wrap:wrap;">
+      <span>${j.dir === 'long' ? 'Long' : 'Short'}</span><span>Loty: ${j.lots.toFixed(2)}</span>
+      ${j.rr > 0 ? `<span>R:R 1:${j.rr.toFixed(2)}</span>` : ''}
+      <span>${new Date(j.ts).toLocaleDateString('cs-CZ')}</span>
+    </div></div>`).join('');
+}
+
+// ─── TABS ─────────────────────────────────────────────────
+const TABS = ['scan', 'calc', 'pos', 'jnl', 'exp'];
+const TITLES = { scan: ['MTF Scanner', 'Twelve Data — živá tržní data'], calc: ['Kalkulátor', 'Výpočet pozice dle ATR a live ceny'], pos: ['Otevřené pozice', 'Sledování a management'], jnl: ['Trading Journal', 'Historie a equity křivka'], exp: ['Export', 'PDF a CSV report'] };
+function swT(t) { TABS.forEach(id => { document.getElementById('tp-' + id).className = 'tp' + (id === t ? ' on' : ''); document.getElementById('nb-' + id).className = 'nb' + (id === t ? ' on' : ''); }); document.getElementById('hT').textContent = TITLES[t][0]; document.getElementById('hS').textContent = TITLES[t][1]; document.getElementById('body').scrollTop = 0; if (t === 'jnl') renderJnl(); if (t === 'exp') updExp(); }
+function badge() { const bP = document.getElementById('bP'), bJ = document.getElementById('bJ'); if (positions.length) { bP.textContent = positions.length; bP.style.display = 'block'; } else bP.style.display = 'none'; if (journal.length) { bJ.textContent = journal.length; bJ.style.display = 'block'; } else bJ.style.display = 'none'; }
+
+function updExp() {
+  const bal = +document.getElementById('bal').value || 0, rp = +document.getElementById('rp').value || 1, dlim = +document.getElementById('dlim').value || 3;
+  const tR = positions.reduce((s, p) => s + p.risk, 0), n = journal.length, wins = journal.filter(j => j.pl > 0).length, totalPL = journal.reduce((s, j) => s + j.pl, 0);
+  document.getElementById('xBal').textContent = '$' + bal.toLocaleString('cs');
+  document.getElementById('xRp').textContent = rp.toFixed(1) + '%';
+  document.getElementById('xDL').textContent = dlim + '% ($' + (bal * dlim / 100).toFixed(2) + ')';
+  document.getElementById('xCnt').textContent = positions.length;
+  document.getElementById('xTR').textContent = positions.length ? '-$' + tR.toFixed(2) : '$0';
+  document.getElementById('xJC').textContent = n;
+  document.getElementById('xJPL').textContent = (totalPL >= 0 ? '+' : '') + `$${Math.abs(totalPL).toFixed(2)}`;
+  document.getElementById('xWR').textContent = n ? Math.round(wins / n * 100) + '%' : '–';
+  document.getElementById('xDt').textContent = new Date().toLocaleString('cs-CZ');
+}
+
+// ─── EXPORT ───────────────────────────────────────────────
+function expPDF() {
+  try {
+    const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const now = new Date().toLocaleString('cs-CZ');
+    doc.setFillColor(29, 158, 117); doc.rect(0, 0, 210, 28, 'F');
+    doc.setTextColor(255, 255, 255); doc.setFontSize(18); doc.setFont(undefined, 'bold'); doc.text('MTF Trading Report', 14, 13);
+    doc.setFontSize(8); doc.setFont(undefined, 'normal'); doc.text(now, 14, 21);
+    let y = 36;
+    const bal = +document.getElementById('bal').value || 0, rp = +document.getElementById('rp').value || 1;
+    const tR = positions.reduce((s, p) => s + p.risk, 0), n = journal.length, wins = journal.filter(j => j.pl > 0).length, totalPL = journal.reduce((s, j) => s + j.pl, 0);
+    doc.setTextColor(40, 40, 40); doc.setFontSize(11); doc.setFont(undefined, 'bold'); doc.text('Přehled účtu', 14, y); y += 8;
+    [['Zůstatek', '$' + bal.toLocaleString()], ['Riziko/obchod', rp + '%'], ['Otevřených pozic', String(positions.length)], ['Celkové riziko', '$' + tR.toFixed(2)], ['Journal', n + ' obchodů'], ['Celkový P&L', (totalPL >= 0 ? '+' : '') + `$${Math.abs(totalPL).toFixed(2)}`], ['Win rate', n ? Math.round(wins / n * 100) + '%' : '–']].forEach(([l, v]) => { doc.setFont(undefined, 'normal'); doc.setTextColor(100, 100, 100); doc.text(l, 14, y); doc.setFont(undefined, 'bold'); doc.setTextColor(40, 40, 40); doc.text(v, 196, y, { align: 'right' }); y += 7; });
+    if (journal.length) {
+      y += 5; doc.setFillColor(29, 158, 117); doc.rect(14, y - 5, 182, 7, 'F');
+      doc.setTextColor(255, 255, 255); doc.setFont(undefined, 'bold'); doc.setFontSize(9); doc.text('Trading Journal', 16, y); y += 8;
+      journal.forEach((j, i) => {
+        if (y > 270) { doc.addPage(); y = 20; }
+        if (i % 2 === 0) { doc.setFillColor(250, 250, 250); doc.rect(14, y - 5, 182, 7, 'F'); }
+        doc.setTextColor(40, 40, 40); doc.setFont(undefined, 'normal'); doc.setFontSize(8);
+        doc.text(j.name.replace('/', ''), 16, y); doc.text(j.dir, 54, y); doc.text(j.lots.toFixed(2), 72, y);
+        doc.setTextColor(j.pl >= 0 ? 29 : 180, j.pl >= 0 ? 158 : 40, j.pl >= 0 ? 117 : 40);
+        doc.text((j.pl >= 0 ? '+' : '') + `$${Math.abs(j.pl).toFixed(2)}`, 140, y);
+        doc.setTextColor(80, 80, 80); doc.text(new Date(j.ts).toLocaleDateString('cs-CZ'), 172, y); y += 7;
+      });
+    }
+    doc.setFontSize(7); doc.setTextColor(180, 180, 180); doc.text('Pouze informativní účely | ' + now, 14, 287);
+    doc.save('mtf-report-' + new Date().toISOString().slice(0, 10) + '.pdf');
+  } catch (e) { alert('Chyba při generování PDF: ' + e.message); }
+}
+
+function expCSV() {
+  let csv = 'sep=,\nMTF Trading Report\n\n=== JOURNAL ===\nDatum,Symbol,Směr,Loty,Vstup,SL,TP,P&L,RR\n';
+  journal.forEach(j => { csv += `${new Date(j.ts).toLocaleDateString('cs-CZ')},${j.name},${j.dir},${j.lots},${j.entry},${j.sl || ''},${j.tp || ''},${j.pl.toFixed(2)},${j.rr.toFixed(2)}\n`; });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })); a.download = 'mtf-report.csv'; a.click();
+}
+
+// ─── STORAGE (localStorage pro standalone app) ─────────────
+function save() {
+  try { localStorage.setItem('mtf_pos', JSON.stringify(positions)); localStorage.setItem('mtf_jnl', JSON.stringify(journal)); } catch (e) { }
+}
+function loadData() {
+  try { const p = localStorage.getItem('mtf_pos'); const j = localStorage.getItem('mtf_jnl'); if (p) positions = JSON.parse(p); if (j) journal = JSON.parse(j); } catch (e) { }
+  renderPos(); badge(); chkLim();
+}
+loadData();
+
+// ─── SERVICE WORKER ───────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(() => console.log('SW registered')).catch(e => console.log('SW error:', e));
+}
+</script>
+</body>
+</html>
