@@ -333,7 +333,7 @@ body{display:flex;justify-content:center;align-items:flex-start;font-family:-app
 
 <script>
 // ─── CONFIG ───────────────────────────────────────────────
-const API_KEY = '283a9e3578e6448886df86dda25af188'; // <-- sem vlož svůj Twelve Data klíč
+const API_KEY = '283a9e3578e6448886df86dda25af188';
 
 // ─── STATE ────────────────────────────────────────────────
 let dark = false, dir = 'long';
@@ -413,8 +413,46 @@ function atr(candles, n = 14) {
   return a;
 }
 
+// ADX — síla trendu (Wilder's smoothing). Vrací null pokud nelze spočítat.
+function adx(candles, n = 14) {
+  if (candles.length < n * 2) return null;
+  const plusDM = [], minusDM = [], trArr = [];
+  for (let i = 1; i < candles.length; i++) {
+    const h = parseFloat(candles[i].high), l = parseFloat(candles[i].low);
+    const ph = parseFloat(candles[i - 1].high), pl = parseFloat(candles[i - 1].low), pc = parseFloat(candles[i - 1].close);
+    const up = h - ph, down = pl - l;
+    plusDM.push(up > down && up > 0 ? up : 0);
+    minusDM.push(down > up && down > 0 ? down : 0);
+    trArr.push(Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc)));
+  }
+  function wilder(arr, n) {
+    let s = arr.slice(0, n).reduce((a, b) => a + b, 0);
+    const out = [s];
+    for (let i = n; i < arr.length; i++) { s = s - s / n + arr[i]; out.push(s); }
+    return out;
+  }
+  const smP = wilder(plusDM, n), smM = wilder(minusDM, n), smTR = wilder(trArr, n);
+  const diP = smP.map((v, i) => smTR[i] > 0 ? 100 * v / smTR[i] : 0);
+  const diM = smM.map((v, i) => smTR[i] > 0 ? 100 * v / smTR[i] : 0);
+  const dx = diP.map((v, i) => (v + diM[i]) > 0 ? 100 * Math.abs(v - diM[i]) / (v + diM[i]) : 0);
+  if (dx.length < n) return null;
+  let a = dx.slice(0, n).reduce((s, v) => s + v, 0) / n;
+  for (let i = n; i < dx.length; i++) a = (a * (n - 1) + dx[i]) / n;
+  return a;
+}
+
+// Volume ratio — poslední objem vs průměr posledních n svíček. Vrací null když data nemají objem (některé FX páry).
+function volRatio(candles, n = 20) {
+  const vols = candles.map(c => parseFloat(c.volume || 0));
+  if (vols.every(v => v === 0)) return null;
+  const last = vols[vols.length - 1];
+  const histo = vols.slice(-n - 1, -1);
+  const avg = histo.length ? histo.reduce((a, b) => a + b, 0) / histo.length : 0;
+  return avg > 0 ? last / avg : null;
+}
+
 function analyzeTF(candles) {
-  if (!candles || candles.length < 10) return { trend: 'neu', score: 50, rsiV: null, atrV: 0, label: '–', e20: null, e50: null, last: 0 };
+  if (!candles || candles.length < 10) return { trend: 'neu', score: 50, rsiV: null, atrV: 0, label: '–', e20: null, e50: null, last: 0, adxV: null, volR: null };
   const cl = closes(candles);
   const last = cl[cl.length - 1];
   const e20arr = ema(cl, Math.min(20, cl.length));
@@ -423,15 +461,27 @@ function analyzeTF(candles) {
   const e50 = e50arr[e50arr.length - 1];
   const rsiV = rsi(cl, Math.min(14, cl.length - 2));
   const atrV = atr(candles, Math.min(14, candles.length - 1));
+  const adxV = adx(candles, Math.min(14, Math.floor(candles.length / 2)));
+  const volR = volRatio(candles, Math.min(20, candles.length - 1));
   let score = 50;
   if (e20 !== null) { if (last > e20) score += 15; else score -= 15; }
   if (e50 !== null) { if (last > e50) score += 15; else score -= 15; }
   if (e20 !== null && e50 !== null) { if (e20 > e50) score += 10; else score -= 10; }
   if (rsiV !== null) { if (rsiV > 55) score += 10; else if (rsiV < 45) score -= 10; }
+  // ADX filtr: slabý trend (< 20) tlumí skóre směrem k neutrálu, silný trend (> 25) ho zesílí
+  if (adxV !== null) {
+    if (adxV < 20) score = 50 + (score - 50) * 0.4;
+    else if (adxV > 25) score = 50 + (score - 50) * 1.15;
+  }
+  // Volume potvrzení: nadprůměrný objem zesílí signál, podprůměrný ho zeslabí
+  if (volR !== null) {
+    if (volR > 1.3) score = 50 + (score - 50) * 1.15;
+    else if (volR < 0.7) score = 50 + (score - 50) * 0.8;
+  }
   score = Math.max(0, Math.min(100, score));
   const trend = score >= 65 ? 'bull' : score <= 35 ? 'bear' : 'neu';
   const label = trend === 'bull' ? '▲ BULL' : trend === 'bear' ? '▼ BEAR' : '→ NEU';
-  return { trend, score, rsiV, atrV, e20, e50, label, last };
+  return { trend, score, rsiV, atrV, e20, e50, label, last, adxV, volR };
 }
 
 // ─── SCANNER ──────────────────────────────────────────────
@@ -483,8 +533,14 @@ function buildCard(d) {
   const pC = d.sig === 'bull' ? 'var(--g)' : d.sig === 'bear' ? 'var(--r)' : 'var(--t2)';
   const slS = d.sig === 'bull' ? (p - d.atrV * 1.5).toFixed(2) : (p + d.atrV * 1.5).toFixed(2);
   const tpS = d.sig === 'bull' ? (p + d.atrV * 2.5).toFixed(2) : (p - d.atrV * 2.5).toFixed(2);
-  const sigTxt = d.sig === 'bull' ? `Long setup: SL ${slS} (1.5×ATR) → TP ${tpS} (2.5×ATR)` : d.sig === 'bear' ? `Short setup: SL ${slS} (1.5×ATR) → TP ${tpS} (2.5×ATR)` : 'Smíšené signály — počkej na potvrzení.';
+  const weakTrend = d.a1h.adxV !== null && d.a1h.adxV < 20;
+  let sigTxt = d.sig === 'bull' ? `Long setup: SL ${slS} (1.5×ATR) → TP ${tpS} (2.5×ATR)` : d.sig === 'bear' ? `Short setup: SL ${slS} (1.5×ATR) → TP ${tpS} (2.5×ATR)` : 'Smíšené signály — počkej na potvrzení.';
+  if (weakTrend && d.sig !== 'neu') sigTxt += ' ⚠️ ADX < 20 — slabý trend, vyšší riziko falešného signálu.';
   const sigIcon = d.sig === 'bull' ? '🟢 LONG signal' : d.sig === 'bear' ? '🔴 SHORT signal' : '⚪ Žádný signal';
+  const adxLbl = d.a1h.adxV !== null ? d.a1h.adxV.toFixed(0) : '–';
+  const adxCls = d.a1h.adxV === null ? '' : d.a1h.adxV >= 25 ? 'pos' : d.a1h.adxV < 20 ? 'warn' : '';
+  const volLbl = d.a1h.volR !== null ? d.a1h.volR.toFixed(1) + 'x' : '–';
+  const volCls = d.a1h.volR === null ? '' : d.a1h.volR > 1.3 ? 'pos' : d.a1h.volR < 0.7 ? 'neg' : '';
   return `<div class="sym-card" onclick="loadCalc('${d.sym}',${p},${d.atrV},'${d.sig}')">
     <div class="sym-hdr">
       <div><div class="sym-name">${d.sym.replace('/', '')}</div><div style="font-size:10px;color:var(--t2);">Klikni → předvyplnit kalkulátor</div></div>
@@ -499,6 +555,8 @@ function buildCard(d) {
       <span class="ind warn">ATR ${d.atrV.toFixed(2)}</span>
       <span class="ind ${d.a1h.e20 > d.a1h.e50 ? 'pos' : 'neg'}">EMA ${d.a1h.e20 > d.a1h.e50 ? '▲' : '▼'}</span>
       <span class="ind ${d.a1d.trend === 'bull' ? 'pos' : d.a1d.trend === 'bear' ? 'neg' : ''}">1D ${d.a1d.label}</span>
+      <span class="ind ${adxCls}" title="Average Directional Index — síla trendu">ADX ${adxLbl}</span>
+      <span class="ind ${volCls}" title="Objem vs 20-svíčkový průměr">Vol ${volLbl}</span>
     </div>
     <div class="score-wrap">
       <div class="score-lbl"><span>Bear 0</span><span>Skóre: ${d.overall}/100</span><span>100 Bull</span></div>
