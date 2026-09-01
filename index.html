@@ -242,9 +242,9 @@ display:flex;background:var(--bg1);flex-shrink:0;
 <button class="db" id="dS" onclick="setDir('short')">▼ Short (prodej)</button>
 </div>
 <div class="g3">
-<div class="fi"><label>Vstupní cena</label><input type="number" id="en" value="" step="0.01" inputmode="decimal" oninput="calc()"></div>
-<div class="fi"><label>Stop Loss</label><input type="number" id="sl2" value="" step="0.01" inputmode="decimal" oninput="clearStopBasis();calc()"></div>
-<div class="fi"><label>Take Profit</label><input type="number" id="tp2" value="" step="0.01" inputmode="decimal" oninput="clearStopBasis();calc()"></div>
+<div class="fi"><label>Vstupní cena</label><input type="number" id="en" value="" step="0.01" inputmode="decimal" oninput="autoFilled=false;calc()"></div>
+<div class="fi"><label>Stop Loss</label><input type="number" id="sl2" value="" step="0.01" inputmode="decimal" oninput="autoFilled=false;clearStopBasis();calc()"></div>
+<div class="fi"><label>Take Profit</label><input type="number" id="tp2" value="" step="0.01" inputmode="decimal" oninput="autoFilled=false;clearStopBasis();calc()"></div>
 </div>
 <div id="stopBasis" style="font-size:10px;color:var(--t2);margin-top:-4px;"></div>
 </div>
@@ -376,6 +376,8 @@ let positions = [], journal = [], eqChart = null, lastC = {};
 let activeSyms = ['XAU/USD', 'BTC/USD', 'ETH/USD'];
 let scanning = false;
 let lastScan = {}; // sym -> poslední výsledek scanu (cena, ATR, strukturální SL/TP) pro loadCalc()
+let lastCalcData = null; // { candles, price, atrV, sym } — pro přepočet SL/TP při přepnutí Long/Short
+let autoFilled = false; // true, pokud vstup/SL/TP pocházejí z auto-fillu (scanner/live cena), ne z ruční editace
 
 // ─── CLOCK ────────────────────────────────────────────────
 function clk() { document.getElementById('clk').textContent = new Date().toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' }); }
@@ -617,7 +619,7 @@ async function startScan() {
       const stops = sig !== 'neu' ? computeStops(c1h, price, atrV, sig === 'bull') : null;
       const confluent = a1h.trend !== 'neu' && a1h.trend === a1d.trend;
       log(`${short}: ✓ skóre ${overall} → ${sig.toUpperCase()}`, 'ok');
-      const d = { sym, price, a1h, a1d, overall, sig, atrV, stops, confluent };
+      const d = { sym, price, a1h, a1d, overall, sig, atrV, stops, confluent, c1h };
       lastScan[sym] = d;
       const card = document.getElementById('lc-' + short);
       if (card) card.outerHTML = buildCard(d);
@@ -695,6 +697,8 @@ function loadCalc(sym) {
   document.querySelectorAll('#calcPills .pi').forEach(p => p.classList.remove('on'));
   setDir(d.sig === 'bull' ? 'long' : 'short');
   document.getElementById('en').value = d.price.toFixed(2);
+  lastCalcData = { candles: d.c1h, price: d.price, atrV: d.atrV, sym: d.sym };
+  autoFilled = true;
   if (d.stops) {
     document.getElementById('sl2').value = d.stops.sl.toFixed(2);
     document.getElementById('tp2').value = d.stops.tp.toFixed(2);
@@ -720,6 +724,8 @@ async function selI(el, sym, pip, contract) {
     const candles = await fetchCandles(sym, '1h', 30);
     const price = parseFloat(candles[candles.length - 1].close);
     const atrV = atr(candles, Math.min(14, candles.length - 1));
+    lastCalcData = { candles, price, atrV, sym };
+    autoFilled = true;
     const stops = computeStops(candles, price, atrV, dir === 'long');
     document.getElementById('en').value = price.toFixed(2);
     document.getElementById('sl2').value = stops.sl.toFixed(2);
@@ -727,7 +733,7 @@ async function selI(el, sym, pip, contract) {
     document.getElementById('mATR').textContent = atrV.toFixed(2);
     document.getElementById('calcSrc').textContent = '● live cena';
     setStopBasis(`SL dle: ${stops.slBasis} · TP dle: ${stops.tpBasis}`);
-  } catch (e) { document.getElementById('calcSrc').textContent = '✗ chyba: ' + e.message; setStopBasis(''); }
+  } catch (e) { document.getElementById('calcSrc').textContent = '✗ chyba: ' + e.message; setStopBasis(''); lastCalcData = null; autoFilled = false; }
   calc();
 }
 
@@ -738,6 +744,15 @@ function setDir(d) {
   dir = d;
   document.getElementById('dL').className = 'db' + (d === 'long' ? ' onL' : '');
   document.getElementById('dS').className = 'db' + (d === 'short' ? ' onS' : '');
+  // Pokud vstup/SL/TP pocházejí z auto-fillu (scanner nebo live cena) a nejsou ručně upravené,
+  // přepočítej SL/TP pro nově zvolený směr — dřív přepnutí Long/Short SL/TP nechalo beze změny,
+  // což vedlo k SL na "špatné straně" a nepoužitelnému kalkulátoru.
+  if (autoFilled && lastCalcData && lastCalcData.sym === ID.name) {
+    const stops = computeStops(lastCalcData.candles, lastCalcData.price, lastCalcData.atrV, d === 'long');
+    document.getElementById('sl2').value = stops.sl.toFixed(2);
+    document.getElementById('tp2').value = stops.tp.toFixed(2);
+    setStopBasis(`SL dle: ${stops.slBasis} · TP dle: ${stops.tpBasis}`);
+  }
   calc();
 }
 
