@@ -587,17 +587,22 @@ function analyzeTF(candles) {
 }
 
 // ─── SCANNER ──────────────────────────────────────────────
+// 8000ms mezi voláními API = max ~7,5 volání/min, bezpečně pod limitem
+// Twelve Data free plánu (8 volání/min). Původních 900ms limit reálně porušovalo.
+const API_DELAY = 8000;
+
 async function startScan() {
   if (scanning) return;
   if (!ensureApiKey()) return;
   scanning = true;
+  const prevScan = { ...lastScan }; // pro porovnání skóre s minulým scanem
   const btn = document.getElementById('refBtn');
   btn.disabled = true; btn.textContent = 'Načítám…';
   document.getElementById('scanCards').innerHTML = '';
   document.getElementById('logBox').innerHTML = '';
   setApiSt('● FETCH', 'var(--a)');
-  log('Spouštím scan pro ' + activeSyms.length + ' instrumentů…');
-  log('Sekvenční volání — 900ms prodleva (rate limit free plánu)', 'warn');
+  log('Spouštím scan pro ' + activeSyms.length + ' instrumentů (1H + 4H + 1D)…');
+  log('Sekvenční volání — 8s prodleva mezi každým (rate limit 8 volání/min free plánu)', 'warn');
   for (const sym of activeSyms) {
     const short = sym.replace('/', '');
     const ph = document.createElement('div');
@@ -607,19 +612,27 @@ async function startScan() {
     try {
       log(`${short}: načítám 1H…`);
       const c1h = await fetchCandles(sym, '1h', 55);
-      await delay(900);
+      await delay(API_DELAY);
+      log(`${short}: načítám 4H…`);
+      const c4h = await fetchCandles(sym, '4h', 55);
+      await delay(API_DELAY);
       log(`${short}: načítám 1D…`);
       const c1d = await fetchCandles(sym, '1day', 55);
-      await delay(900);
-      const a1h = analyzeTF(c1h), a1d = analyzeTF(c1d);
+      await delay(API_DELAY);
+      const a1h = analyzeTF(c1h), a4h = analyzeTF(c4h), a1d = analyzeTF(c1d);
       const price = a1h.last;
-      const overall = Math.round((a1h.score + a1d.score * 1.5) / 2.5);
+      // Váhy rostou s vyšším rámcem: 1H×1, 4H×1.5, 1D×2 (dělitel 4.5)
+      const overall = Math.round((a1h.score + a4h.score * 1.5 + a1d.score * 2) / 4.5);
       const sig = overall >= 62 ? 'bull' : overall <= 38 ? 'bear' : 'neu';
       const atrV = a1h.atrV;
       const stops = sig !== 'neu' ? computeStops(c1h, price, atrV, sig === 'bull') : null;
-      const confluent = a1h.trend !== 'neu' && a1h.trend === a1d.trend;
+      // Shoda: aspoň 2 ze 3 rámců (1H/4H/1D) ukazují stejným směrem
+      const trends = [a1h.trend, a4h.trend, a1d.trend];
+      const confluent = trends.filter(t => t === 'bull').length >= 2 || trends.filter(t => t === 'bear').length >= 2;
+      const prevOverall = prevScan[sym] ? prevScan[sym].overall : null;
+      const scoreDelta = prevOverall !== null ? overall - prevOverall : null;
       log(`${short}: ✓ skóre ${overall} → ${sig.toUpperCase()}`, 'ok');
-      const d = { sym, price, a1h, a1d, overall, sig, atrV, stops, confluent, c1h };
+      const d = { sym, price, a1h, a4h, a1d, overall, sig, atrV, stops, confluent, c1h, scoreDelta };
       lastScan[sym] = d;
       const card = document.getElementById('lc-' + short);
       if (card) card.outerHTML = buildCard(d);
@@ -628,10 +641,11 @@ async function startScan() {
       const card = document.getElementById('lc-' + short);
       if (card) card.outerHTML = `<div class="err-card"><div class="err-title">✗ ${short} — chyba</div><div>${e.message}</div>${/rate|limit/i.test(e.message) ? '<div style="margin-top:4px;">⚠️ Rate limit — počkej minutu.</div>' : ''}</div>`;
     }
-    if (sym !== activeSyms[activeSyms.length - 1]) await delay(900);
+    if (sym !== activeSyms[activeSyms.length - 1]) await delay(API_DELAY);
   }
   setApiSt('● LIVE', 'var(--g)');
   log('Scan dokončen.', 'ok');
+  saveLastScan();
   scanning = false; btn.disabled = false; btn.textContent = '↻ Načíst data';
 }
 
@@ -648,13 +662,16 @@ function buildCard(d) {
     const slFmt = d.stops.sl.toFixed(2), tpFmt = d.stops.tp.toFixed(2);
     sigTxt = `${dirWord} setup: SL ${slFmt} (${d.stops.slBasis}) → TP ${tpFmt} (${d.stops.tpBasis})`;
     if (weakTrend) sigTxt += ' ⚠️ ADX < 20 — slabý trend, vyšší riziko falešného signálu.';
-    if (!d.confluent) sigTxt += ' ⚠️ 1H a 1D si neodpovídají — nižší kvalita signálu.';
+    if (!d.confluent) sigTxt += ' ⚠️ Rámce (1H/4H/1D) si neodpovídají — nižší kvalita signálu.';
   }
   const sigIcon = d.sig === 'bull' ? '🟢 LONG signal' : d.sig === 'bear' ? '🔴 SHORT signal' : '⚪ Žádný signal';
   const adxLbl = d.a1h.adxV !== null ? d.a1h.adxV.toFixed(0) : '–';
   const adxCls = d.a1h.adxV === null ? '' : d.a1h.adxV >= 25 ? 'pos' : d.a1h.adxV < 20 ? 'warn' : '';
   const volLbl = d.a1h.volR !== null ? d.a1h.volR.toFixed(1) + 'x' : '–';
   const volCls = d.a1h.volR === null ? '' : d.a1h.volR > 1.3 ? 'pos' : d.a1h.volR < 0.7 ? 'neg' : '';
+  // Delta skóre oproti minulému scanu (chybí u prvního scanu po otevření appky)
+  const deltaTxt = (d.scoreDelta !== null && d.scoreDelta !== undefined && d.scoreDelta !== 0)
+    ? ` <span style="color:${d.scoreDelta > 0 ? 'var(--g)' : 'var(--r)'}">${d.scoreDelta > 0 ? '▲' : '▼'} ${Math.abs(d.scoreDelta)}</span>` : '';
   return `<div class="sym-card" onclick="loadCalc('${d.sym}')">
     <div class="sym-hdr">
       <div><div class="sym-name">${d.sym.replace('/', '')}</div><div style="font-size:10px;color:var(--t2);">Klikni → předvyplnit kalkulátor</div></div>
@@ -662,19 +679,19 @@ function buildCard(d) {
     </div>
     <div class="tf-row">
       <div class="tf-b ${d.a1h.trend}"><span class="tf-lbl">1H</span><span class="tf-val">${d.a1h.label}</span></div>
+      <div class="tf-b ${d.a4h.trend}"><span class="tf-lbl">4H</span><span class="tf-val">${d.a4h.label}</span></div>
       <div class="tf-b ${d.a1d.trend}"><span class="tf-lbl">1D</span><span class="tf-val">${d.a1d.label}</span></div>
     </div>
     <div class="ind-row">
       ${d.a1h.rsiV !== null ? `<span class="ind ${d.a1h.rsiV > 60 ? 'pos' : d.a1h.rsiV < 40 ? 'neg' : ''}">RSI ${d.a1h.rsiV.toFixed(0)}</span>` : ''}
       <span class="ind warn">ATR ${d.atrV.toFixed(2)}</span>
       <span class="ind ${d.a1h.e20 > d.a1h.e50 ? 'pos' : 'neg'}">EMA ${d.a1h.e20 > d.a1h.e50 ? '▲' : '▼'}</span>
-      <span class="ind ${d.a1d.trend === 'bull' ? 'pos' : d.a1d.trend === 'bear' ? 'neg' : ''}">1D ${d.a1d.label}</span>
       <span class="ind ${adxCls}" title="Average Directional Index — síla trendu">ADX ${adxLbl}</span>
       <span class="ind ${volCls}" title="Objem vs 20-svíčkový průměr">Vol ${volLbl}</span>
-      <span class="ind ${d.confluent ? 'pos' : (d.sig !== 'neu' ? 'warn' : '')}" title="Shoda trendu mezi 1H a 1D">MTF ${d.confluent ? '✓' : '✗'}</span>
+      <span class="ind ${d.confluent ? 'pos' : (d.sig !== 'neu' ? 'warn' : '')}" title="Shoda trendu — aspoň 2 ze 3 rámců (1H/4H/1D) stejným směrem">MTF ${d.confluent ? '✓' : '✗'}</span>
     </div>
     <div class="score-wrap">
-      <div class="score-lbl"><span>Bear 0</span><span>Skóre: ${d.overall}/100</span><span>100 Bull</span></div>
+      <div class="score-lbl"><span>Bear 0</span><span>Skóre: ${d.overall}/100${deltaTxt}</span><span>100 Bull</span></div>
       <div class="score-bar"><div class="score-fill" style="width:${d.overall}%;background:${d.sig === 'bull' ? 'var(--g)' : d.sig === 'bear' ? 'var(--r)' : 'var(--t2)'}"></div></div>
     </div>
     <div class="sig-box ${d.sig}"><div class="sig-title">${sigIcon}</div><div style="font-size:11px;">${sigTxt}</div></div>
@@ -709,7 +726,7 @@ function loadCalc(sym) {
     setStopBasis('');
   }
   document.getElementById('mATR').textContent = d.atrV.toFixed(2);
-  document.getElementById('calcSrc').textContent = '← z MTF scanner' + (d.confluent ? '' : ' ⚠️ 1H/1D si neodpovídají');
+  document.getElementById('calcSrc').textContent = '← z MTF scanner' + (d.confluent ? '' : ' ⚠️ rámce si neodpovídají');
   calc(); swT('calc');
 }
 
@@ -1014,6 +1031,35 @@ function loadData() {
   renderPos(); badge(); chkLim();
 }
 loadData();
+
+// Poslední výsledek scanu se ukládá lokálně, ať appka po zavření/znovuotevření
+// nezačíná pokaždé s prázdnou obrazovkou scanneru.
+function saveLastScan() {
+  try { localStorage.setItem('mtf_lastscan', JSON.stringify({ ts: Date.now(), syms: activeSyms, data: lastScan })); }
+  catch (e) { /* localStorage plný/nedostupný — scan prostě nepřežije zavření appky */ }
+}
+function loadLastScanFromStorage() {
+  try {
+    const raw = localStorage.getItem('mtf_lastscan');
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.data || !Object.keys(parsed.data).length) return;
+    lastScan = parsed.data;
+    if (Array.isArray(parsed.syms) && parsed.syms.length) {
+      activeSyms = parsed.syms;
+      document.querySelectorAll('#symPills .pi').forEach(p => {
+        p.classList.toggle('on', activeSyms.includes(p.getAttribute('data-sym')));
+      });
+    }
+    const ageMin = Math.max(0, Math.round((Date.now() - parsed.ts) / 60000));
+    const ageTxt = ageMin < 1 ? 'právě teď' : ageMin === 1 ? 'před 1 minutou' : 'před ' + ageMin + ' min';
+    document.getElementById('scanCards').innerHTML = Object.values(lastScan)
+      .filter(d => d && d.a1h && d.a4h && d.a1d)
+      .map(buildCard).join('');
+    log(`Zobrazeny uložené výsledky (${ageTxt}). Klikni ↻ pro aktuální data.`, 'warn');
+  } catch (e) { /* poškozená uložená data — appka prostě otevře prázdný scanner */ }
+}
+loadLastScanFromStorage();
 
 if (!API_KEY) setApiSt('○ chybí klíč', 'var(--r)');
 
