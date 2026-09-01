@@ -741,17 +741,32 @@ function setStopBasis(txt) { const el = document.getElementById('stopBasis'); if
 function clearStopBasis() { setStopBasis(''); }
 
 function setDir(d) {
+  const changed = dir !== d;
   dir = d;
   document.getElementById('dL').className = 'db' + (d === 'long' ? ' onL' : '');
   document.getElementById('dS').className = 'db' + (d === 'short' ? ' onS' : '');
-  // Pokud vstup/SL/TP pocházejí z auto-fillu (scanner nebo live cena) a nejsou ručně upravené,
-  // přepočítej SL/TP pro nově zvolený směr — dřív přepnutí Long/Short SL/TP nechalo beze změny,
-  // což vedlo k SL na "špatné straně" a nepoužitelnému kalkulátoru.
-  if (autoFilled && lastCalcData && lastCalcData.sym === ID.name) {
-    const stops = computeStops(lastCalcData.candles, lastCalcData.price, lastCalcData.atrV, d === 'long');
-    document.getElementById('sl2').value = stops.sl.toFixed(2);
-    document.getElementById('tp2').value = stops.tp.toFixed(2);
-    setStopBasis(`SL dle: ${stops.slBasis} · TP dle: ${stops.tpBasis}`);
+  if (changed) {
+    if (autoFilled && lastCalcData && lastCalcData.sym === ID.name) {
+      // Nejlepší varianta: přepočet ze skutečné struktury trhu (swing high/low + ATR).
+      const stops = computeStops(lastCalcData.candles, lastCalcData.price, lastCalcData.atrV, d === 'long');
+      document.getElementById('sl2').value = stops.sl.toFixed(2);
+      document.getElementById('tp2').value = stops.tp.toFixed(2);
+      setStopBasis(`SL dle: ${stops.slBasis} · TP dle: ${stops.tpBasis}`);
+    } else {
+      // Záložní varianta, když nejsou k dispozici cachovaná data ze scanu/live ceny:
+      // pokud po přepnutí směru vyšly SL/TP na špatnou stranu, zrcadlově je otoč kolem
+      // vstupní ceny (stejná vzdálenost, správná strana). Funguje vždy, i po ruční editaci.
+      const en = +document.getElementById('en').value || 0;
+      const slEl = document.getElementById('sl2'), tpEl = document.getElementById('tp2');
+      const sl = +slEl.value || 0, tp = +tpEl.value || 0;
+      if (en > 0) {
+        const slWrongSide = sl > 0 && (d === 'long' ? sl >= en : sl <= en);
+        const tpWrongSide = tp > 0 && (d === 'long' ? tp <= en : tp >= en);
+        if (slWrongSide) slEl.value = (2 * en - sl).toFixed(2);
+        if (tpWrongSide) tpEl.value = (2 * en - tp).toFixed(2);
+        if (slWrongSide || tpWrongSide) clearStopBasis();
+      }
+    }
   }
   calc();
 }
