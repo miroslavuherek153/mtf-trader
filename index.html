@@ -18,73 +18,66 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --bg0:#f2f2f7;--bg1:#fff;--bg2:#f2f2f7;
-  --t1:#1c1c1e;--t2:#6e6e73;--t3:#aeaeb2;
-  --bd:#d1d1d6;--bd2:#e5e5ea;
-  --g:#1D9E75;--gl:#EAF3DE;--glt:#3B6D11;
-  --r:#E24B4A;--rl:#FCEBEB;--rlt:#A32D2D;
-  --a:#BA7517;--al:#FAEEDA;--alt:#854F0B;
-  --shadow:0 2px 10px rgba(0,0,0,.07);
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
+--bg0:#f2f2f7;--bg1:#fff;--bg2:#f2f2f7;
+--t1:#1c1c1e;--t2:#6e6e73;--t3:#aeaeb2;
+--bd:#d1d1d6;--bd2:#e5e5ea;
+--g:#1D9E75;--gl:#EAF3DE;--glt:#3B6D11;
+--r:#E24B4A;--rl:#FCEBEB;--rlt:#A32D2D;
+--a:#BA7517;--al:#FAEEDA;--alt:#854F0B;
+--shadow:0 2px 10px rgba(0,0,0,.07);
+--safe-top: env(safe-area-inset-top, 0px);
+--safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 .dark{
-  --bg0:#000;--bg1:#1c1c1e;--bg2:#2c2c2e;
-  --t1:#fff;--t2:#aeaeb2;--t3:#6e6e73;
-  --bd:#3a3a3c;--bd2:#2c2c2e;
-  --gl:#1a3322;--glt:#6fcfa4;
-  --rl:#3a1515;--rlt:#f08080;
-  --al:#3a2800;--alt:#f0b440;
-  --shadow:0 2px 16px rgba(0,0,0,.45);
+--bg0:#000;--bg1:#1c1c1e;--bg2:#2c2c2e;
+--t1:#fff;--t2:#aeaeb2;--t3:#6e6e73;
+--bd:#3a3a3c;--bd2:#2c2c2e;
+--gl:#1a3322;--glt:#6fcfa4;
+--rl:#3a1515;--rlt:#f08080;
+--al:#3a2800;--alt:#f0b440;
+--shadow:0 2px 16px rgba(0,0,0,.45);
 }
 html,body{height:100%;background:var(--bg0);}
 body{display:flex;justify-content:center;align-items:flex-start;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden;}
-
 /* ── Phone shell (desktop) / full screen (mobile) ── */
 .ph{
-  width:100%;max-width:430px;height:100vh;
-  background:var(--bg1);
-  display:flex;flex-direction:column;
-  position:relative;overflow:hidden;
+width:100%;max-width:430px;height:100vh;
+background:var(--bg1);
+display:flex;flex-direction:column;
+position:relative;overflow:hidden;
 }
 @media(min-width:500px){
-  .ph{border:1.5px solid var(--bd);border-radius:44px;height:96vh;max-height:860px;margin-top:2vh;box-shadow:var(--shadow);outline:9px solid var(--bg0);}
+.ph{border:1.5px solid var(--bd);border-radius:44px;height:96vh;max-height:860px;margin-top:2vh;box-shadow:var(--shadow);outline:9px solid var(--bg0);}
 }
-
 /* ── Status bar ── */
 .sb{
-  padding: calc(14px + var(--safe-top)) 24px 8px;
-  display:flex;justify-content:space-between;align-items:center;
-  background:var(--bg1);flex-shrink:0;
+padding: calc(14px + var(--safe-top)) 24px 8px;
+display:flex;justify-content:space-between;align-items:center;
+background:var(--bg1);flex-shrink:0;
 }
 .sb-t{font-size:15px;font-weight:500;color:var(--t1);}
 .sb-r{display:flex;align-items:center;gap:10px;}
-.dm-btn{background:none;border:none;cursor:pointer;font-size:18px;color:var(--t2);padding:2px;}
-
+.dm-btn{background:none;border:none;cursor:pointer;font-size:16px;color:var(--t2);padding:2px;}
 /* ── Header ── */
 .hd{padding:2px 22px 12px;border-bottom:.5px solid var(--bd2);background:var(--bg1);flex-shrink:0;}
 .ht{font-size:22px;font-weight:600;color:var(--t1);line-height:1.2;}
 .hs{font-size:12px;color:var(--t2);margin-top:2px;}
-
 /* ── Scrollable body ── */
 .body{flex:1;overflow-y:auto;padding:14px 18px 8px;background:var(--bg0);scrollbar-width:none;-webkit-overflow-scrolling:touch;}
 .body::-webkit-scrollbar{display:none;}
-
 /* ── Bottom nav ── */
 .nav{
-  height:calc(64px + var(--safe-bottom));
-  padding-bottom:var(--safe-bottom);
-  border-top:.5px solid var(--bd2);
-  display:flex;background:var(--bg1);flex-shrink:0;
+height:calc(64px + var(--safe-bottom));
+padding-bottom:var(--safe-bottom);
+border-top:.5px solid var(--bd2);
+display:flex;background:var(--bg1);flex-shrink:0;
 }
 .nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;border:none;background:transparent;color:var(--t3);position:relative;padding-top:6px;}
 .nb i{font-size:21px;}.nb span{font-size:9.5px;letter-spacing:.01em;}
 .nb.on{color:var(--g);}
 .bdg{position:absolute;top:4px;right:8px;min-width:15px;height:15px;border-radius:8px;background:var(--r);color:#fff;font-size:9px;line-height:15px;text-align:center;padding:0 3px;display:none;}
-
 /* ── Tabs ── */
 .tp{display:none;}.tp.on{display:block;}
-
 /* ── Cards & layout ── */
 .card{background:var(--bg1);border-radius:16px;padding:13px 15px;margin-bottom:10px;box-shadow:var(--shadow);}
 .sl{font-size:10px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
@@ -94,40 +87,35 @@ body{display:flex;justify-content:center;align-items:flex-start;font-family:-app
 .fi label{display:block;font-size:11px;color:var(--t2);margin-bottom:4px;}
 .fi input,.fi select{width:100%;padding:10px 11px;font-size:15px;border:.5px solid var(--bd);border-radius:12px;background:var(--bg2);color:var(--t1);outline:none;-webkit-appearance:none;}
 .fi input:focus{border-color:var(--g);box-shadow:0 0 0 2px rgba(29,158,117,.14);}
-
 /* ── Buttons ── */
 .bp{width:100%;padding:13px;background:var(--g);color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:500;cursor:pointer;margin-bottom:8px;-webkit-tap-highlight-color:transparent;}
 .bp:active{opacity:.8;}
+.bp:disabled{opacity:.5;cursor:not-allowed;}
 .bs{width:100%;padding:11px;background:var(--bg2);color:var(--t1);border:.5px solid var(--bd);border-radius:14px;font-size:14px;cursor:pointer;margin-bottom:8px;}
 .pills{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
 .pi{padding:6px 12px;border-radius:20px;font-size:12px;cursor:pointer;border:.5px solid var(--bd);color:var(--t2);background:var(--bg2);-webkit-tap-highlight-color:transparent;}
 .pi.on{background:var(--g);color:#fff;border-color:var(--g);}
 .ref-btn{background:none;border:.5px solid var(--bd);border-radius:20px;padding:5px 13px;font-size:12px;color:var(--t2);cursor:pointer;}
 .ref-btn:disabled{opacity:.45;}
-
 /* ── Metric cells ── */
 .mc{background:var(--bg2);border-radius:11px;padding:9px 10px;}
 .ml{font-size:10px;color:var(--t2);margin-bottom:2px;}
 .mv{font-size:13px;font-weight:500;color:var(--t1);}
 .pos-c{color:var(--g)!important;}.neg-c{color:var(--r)!important;}.warn-c{color:var(--a)!important;}
-
 /* ── Warnings ── */
 .wn{background:var(--al);border-radius:10px;padding:9px 12px;font-size:12px;color:var(--alt);margin-bottom:9px;line-height:1.5;display:none;}
 .wn.on{display:block;}
 .alert-box{background:var(--rl);border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:var(--rlt);display:none;line-height:1.5;}
 .alert-box.on{display:block;}
-
 /* ── Result box ── */
 .res-box{border-radius:16px;padding:13px 15px;margin-bottom:10px;background:var(--g);}
 .rr-tr{height:7px;background:rgba(255,255,255,.25);border-radius:4px;overflow:hidden;margin-top:10px;display:flex;}
 .rr-ls{height:100%;background:rgba(255,100,100,.7);}.rr-rs{height:100%;background:rgba(100,255,180,.7);}
-
 /* ── Direction toggle ── */
 .dtog{display:grid;grid-template-columns:1fr 1fr;border:.5px solid var(--bd);border-radius:12px;overflow:hidden;margin-bottom:9px;}
 .db{padding:10px;text-align:center;font-size:13px;cursor:pointer;border:none;background:var(--bg2);color:var(--t2);}
 .db.onL{background:var(--gl);color:var(--glt);font-weight:500;}
 .db.onS{background:var(--rl);color:var(--rlt);font-weight:500;}
-
 /* ── Scanner cards ── */
 .sym-card{background:var(--bg1);border-radius:16px;padding:13px 15px;margin-bottom:10px;box-shadow:var(--shadow);cursor:pointer;border:1.5px solid transparent;transition:border-color .2s;-webkit-tap-highlight-color:transparent;}
 .sym-card:active{border-color:var(--g);}
@@ -161,7 +149,6 @@ body{display:flex;justify-content:center;align-items:flex-start;font-family:-app
 .err-card{background:var(--rl);border-radius:16px;padding:13px 15px;margin-bottom:10px;font-size:12px;color:var(--rlt);line-height:1.5;}
 .err-title{font-weight:700;margin-bottom:4px;font-size:13px;}
 .log-box{background:var(--bg2);border-radius:10px;padding:9px 11px;margin-bottom:10px;font-size:11px;color:var(--t2);line-height:1.7;font-family:monospace;max-height:80px;overflow-y:auto;}
-
 /* ── Position & journal cards ── */
 .pc,.jc{background:var(--bg1);border-radius:14px;padding:12px 14px;margin-bottom:8px;box-shadow:var(--shadow);}
 .badge{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;}
@@ -176,165 +163,208 @@ body{display:flex;justify-content:center;align-items:flex-start;font-family:-app
 .tip-box{background:var(--bg1);border-radius:12px;padding:12px 14px;margin-top:10px;box-shadow:var(--shadow);}
 .tip-row{display:flex;gap:8px;align-items:flex-start;padding:4px 0;font-size:12px;color:var(--t2);line-height:1.5;}
 .tip-row i{font-size:13px;margin-top:1px;flex-shrink:0;color:var(--g);}
+/* ── Modal (nahrazuje window.prompt) ── */
+.modal-bg{position:absolute;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:50;}
+.modal-bg.on{display:flex;}
+.modal-box{background:var(--bg1);width:100%;border-radius:20px 20px 0 0;padding:18px 18px calc(18px + var(--safe-bottom));box-shadow:0 -4px 24px rgba(0,0,0,.2);}
+@media(min-width:500px){.modal-box{border-radius:20px;margin-bottom:6vh;max-width:380px;}}
+.modal-title{font-size:16px;font-weight:600;color:var(--t1);margin-bottom:4px;}
+.modal-sub{font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.4;}
+.modal-err{font-size:12px;color:var(--r);margin:-4px 0 8px;display:none;}
+.modal-err.on{display:block;}
+.modal-row{display:flex;gap:8px;}
+.modal-row .bp,.modal-row .bs{margin-bottom:0;}
 </style>
 </head>
 <body>
 <div class="ph" id="ph">
 
-  <!-- Status bar -->
-  <div class="sb">
-    <span class="sb-t" id="clk"></span>
-    <div class="sb-r">
-      <span id="apiSt" style="font-size:10px;color:var(--t2);">○ –</span>
-      <button class="dm-btn" onclick="toggleDark()" id="dmb" title="Dark mode">🌙</button>
-    </div>
-  </div>
+<!-- Status bar -->
+<div class="sb">
+<span class="sb-t" id="clk"></span>
+<div class="sb-r">
+<span id="apiSt" style="font-size:10px;color:var(--t2);">○ –</span>
+<button class="dm-btn" onclick="openKeyModal()" id="keyBtn" title="Nastavit API klíč">🔑</button>
+<button class="dm-btn" onclick="toggleDark()" id="dmb" title="Dark mode">🌙</button>
+</div>
+</div>
 
-  <!-- Header -->
-  <div class="hd">
-    <div class="ht" id="hT">MTF Scanner</div>
-    <div class="hs" id="hS">Twelve Data — živá tržní data</div>
-  </div>
+<!-- Header -->
+<div class="hd">
+<div class="ht" id="hT">MTF Scanner</div>
+<div class="hs" id="hS">Twelve Data — živá tržní data</div>
+</div>
 
-  <!-- Body -->
-  <div class="body" id="body">
+<!-- Body -->
+<div class="body" id="body">
 
-    <!-- ─── SCANNER ─── -->
-    <div class="tp on" id="tp-scan">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <div class="sl" style="margin:0;">Sledované instrumenty</div>
-        <button class="ref-btn" id="refBtn" onclick="startScan()">↻ Načíst data</button>
-      </div>
-      <div class="pills" id="symPills">
-        <button class="pi on" data-sym="XAU/USD" onclick="toggleSym(this)">XAUUSD</button>
-        <button class="pi on" data-sym="BTC/USD" onclick="toggleSym(this)">BTCUSD</button>
-        <button class="pi on" data-sym="ETH/USD" onclick="toggleSym(this)">ETHUSD</button>
-        <button class="pi" data-sym="EUR/USD" onclick="toggleSym(this)">EURUSD</button>
-        <button class="pi" data-sym="GBP/USD" onclick="toggleSym(this)">GBPUSD</button>
-        <button class="pi" data-sym="AAPL" onclick="toggleSym(this)">AAPL</button>
-      </div>
-      <div class="log-box" id="logBox">Připraven. Stiskni ↻ Načíst data.</div>
-      <div id="scanCards"></div>
-    </div>
+<!-- ─── SCANNER ─── -->
+<div class="tp on" id="tp-scan">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+<div class="sl" style="margin:0;">Sledované instrumenty</div>
+<button class="ref-btn" id="refBtn" onclick="startScan()">↻ Načíst data</button>
+</div>
+<div class="pills" id="symPills">
+<button class="pi on" data-sym="XAU/USD" onclick="toggleSym(this)">XAUUSD</button>
+<button class="pi on" data-sym="BTC/USD" onclick="toggleSym(this)">BTCUSD</button>
+<button class="pi on" data-sym="ETH/USD" onclick="toggleSym(this)">ETHUSD</button>
+<button class="pi" data-sym="EUR/USD" onclick="toggleSym(this)">EURUSD</button>
+<button class="pi" data-sym="GBP/USD" onclick="toggleSym(this)">GBPUSD</button>
+<button class="pi" data-sym="AAPL" onclick="toggleSym(this)">AAPL</button>
+</div>
+<div class="log-box" id="logBox">Připraven. Stiskni ↻ Načíst data.</div>
+<div id="scanCards"></div>
+</div>
 
-    <!-- ─── KALKULÁTOR ─── -->
-    <div class="tp" id="tp-calc">
-      <div class="alert-box" id="alertBox"></div>
-      <div class="card">
-        <div class="sl">Nastavení účtu</div>
-        <div class="g2">
-          <div class="fi"><label>Zůstatek ($)</label><input type="number" id="bal" value="2161" inputmode="decimal" oninput="calc()"></div>
-          <div class="fi"><label>Riziko (%)</label><input type="number" id="rp" value="1" min="0.1" max="10" step="0.1" inputmode="decimal" oninput="calc()"></div>
-        </div>
-        <div class="fi"><label>Denní limit ztráty (%)</label><input type="number" id="dlim" value="3" step="0.5" inputmode="decimal" oninput="chkLim()"></div>
-      </div>
-      <div class="card">
-        <div class="sl">Instrument <span id="calcSrc" style="color:var(--g);font-weight:400;font-size:10px;"></span></div>
-        <div class="pills" id="calcPills">
-          <button class="pi on" onclick="selI(this,'XAU/USD',0.01,100)">XAUUSD</button>
-          <button class="pi" onclick="selI(this,'BTC/USD',1,1)">BTCUSD</button>
-          <button class="pi" onclick="selI(this,'ETH/USD',1,1)">ETHUSD</button>
-          <button class="pi" onclick="selI(this,'EUR/USD',0.00001,100000)">EURUSD</button>
-          <button class="pi" onclick="selI(this,'GBP/USD',0.00001,100000)">GBPUSD</button>
-          <button class="pi" onclick="selI(this,'AAPL',0.01,1)">AAPL</button>
-        </div>
-        <div class="dtog">
-          <button class="db onL" id="dL" onclick="setDir('long')">▲ Long (nákup)</button>
-          <button class="db" id="dS" onclick="setDir('short')">▼ Short (prodej)</button>
-        </div>
-        <div class="g3">
-          <div class="fi"><label>Vstupní cena</label><input type="number" id="en" value="" step="0.01" inputmode="decimal" oninput="calc()"></div>
-          <div class="fi"><label>Stop Loss</label><input type="number" id="sl2" value="" step="0.01" inputmode="decimal" oninput="calc()"></div>
-          <div class="fi"><label>Take Profit</label><input type="number" id="tp2" value="" step="0.01" inputmode="decimal" oninput="calc()"></div>
-        </div>
-      </div>
-      <div class="wn" id="wn"></div>
-      <div class="res-box">
-        <div style="font-size:11px;color:rgba(255,255,255,.75);margin-bottom:4px;">Doporučená velikost pozice</div>
-        <div style="font-size:32px;font-weight:600;color:#fff;" id="rL">– lotů</div>
-        <div style="font-size:12px;color:rgba(255,255,255,.75);margin-top:2px;" id="rS">Vyplň vstup a SL</div>
-        <div class="rr-tr" id="rrT" style="display:none;"><div class="rr-ls" id="rrL" style="width:30%"></div><div class="rr-rs" id="rrR" style="width:70%"></div></div>
-      </div>
-      <div class="g3" style="margin-bottom:10px;">
-        <div class="mc"><div class="ml">Riziko $</div><div class="mv neg-c" id="mRi">–</div></div>
-        <div class="mc"><div class="ml">Potenciál</div><div class="mv pos-c" id="mPr">–</div></div>
-        <div class="mc"><div class="ml">R:R poměr</div><div class="mv" id="mRR">–</div></div>
-        <div class="mc"><div class="ml">% účtu</div><div class="mv" id="mPct">–</div></div>
-        <div class="mc"><div class="ml">ATR 1H</div><div class="mv warn-c" id="mATR">–</div></div>
-        <div class="mc"><div class="ml">Hodnota poz.</div><div class="mv" id="mPV">–</div></div>
-      </div>
-      <button class="bp" onclick="addPos()"><i class="ti ti-circle-plus" style="font-size:15px;vertical-align:-2px;margin-right:5px;"></i>Přidat do sledování pozic</button>
-      <button class="bs" onclick="closePos()"><i class="ti ti-check" style="font-size:14px;vertical-align:-1px;margin-right:5px;"></i>Uzavřít → zapsat do journalu</button>
-    </div>
+<!-- ─── KALKULÁTOR ─── -->
+<div class="tp" id="tp-calc">
+<div class="alert-box" id="alertBox"></div>
+<div class="card">
+<div class="sl">Nastavení účtu</div>
+<div class="g2">
+<div class="fi"><label>Zůstatek ($)</label><input type="number" id="bal" value="1000" min="0" step="1" inputmode="decimal" oninput="calc()"></div>
+<div class="fi"><label>Riziko (%)</label><input type="number" id="rp" value="1" min="0.1" max="10" step="0.1" inputmode="decimal" oninput="calc()"></div>
+</div>
+<div class="fi"><label>Denní limit ztráty (%)</label><input type="number" id="dlim" value="3" min="0.5" step="0.5" inputmode="decimal" oninput="chkLim()"></div>
+</div>
+<div class="card">
+<div class="sl">Instrument <span id="calcSrc" style="color:var(--g);font-weight:400;font-size:10px;"></span></div>
+<div class="pills" id="calcPills">
+<button class="pi on" onclick="selI(this,'XAU/USD',0.01,100)">XAUUSD</button>
+<button class="pi" onclick="selI(this,'BTC/USD',1,1)">BTCUSD</button>
+<button class="pi" onclick="selI(this,'ETH/USD',1,1)">ETHUSD</button>
+<button class="pi" onclick="selI(this,'EUR/USD',0.00001,100000)">EURUSD</button>
+<button class="pi" onclick="selI(this,'GBP/USD',0.00001,100000)">GBPUSD</button>
+<button class="pi" onclick="selI(this,'AAPL',0.01,1)">AAPL</button>
+</div>
+<div class="dtog">
+<button class="db onL" id="dL" onclick="setDir('long')">▲ Long (nákup)</button>
+<button class="db" id="dS" onclick="setDir('short')">▼ Short (prodej)</button>
+</div>
+<div class="g3">
+<div class="fi"><label>Vstupní cena</label><input type="number" id="en" value="" step="0.01" inputmode="decimal" oninput="calc()"></div>
+<div class="fi"><label>Stop Loss</label><input type="number" id="sl2" value="" step="0.01" inputmode="decimal" oninput="calc()"></div>
+<div class="fi"><label>Take Profit</label><input type="number" id="tp2" value="" step="0.01" inputmode="decimal" oninput="calc()"></div>
+</div>
+</div>
+<div class="wn" id="wn"></div>
+<div class="res-box">
+<div style="font-size:11px;color:rgba(255,255,255,.75);margin-bottom:4px;">Doporučená velikost pozice</div>
+<div style="font-size:32px;font-weight:600;color:#fff;" id="rL">– lotů</div>
+<div style="font-size:12px;color:rgba(255,255,255,.75);margin-top:2px;" id="rS">Vyplň vstup a SL</div>
+<div class="rr-tr" id="rrT" style="display:none;"><div class="rr-ls" id="rrL" style="width:30%"></div><div class="rr-rs" id="rrR" style="width:70%"></div></div>
+</div>
+<div class="g3" style="margin-bottom:10px;">
+<div class="mc"><div class="ml">Riziko $</div><div class="mv neg-c" id="mRi">–</div></div>
+<div class="mc"><div class="ml">Potenciál</div><div class="mv pos-c" id="mPr">–</div></div>
+<div class="mc"><div class="ml">R:R poměr</div><div class="mv" id="mRR">–</div></div>
+<div class="mc"><div class="ml">% účtu</div><div class="mv" id="mPct">–</div></div>
+<div class="mc"><div class="ml">ATR 1H</div><div class="mv warn-c" id="mATR">–</div></div>
+<div class="mc"><div class="ml">Hodnota poz.</div><div class="mv" id="mPV">–</div></div>
+</div>
+<button class="bp" onclick="addPos()"><i class="ti ti-circle-plus" style="font-size:15px;vertical-align:-2px;margin-right:5px;"></i>Přidat do sledování pozic</button>
+<button class="bs" onclick="closePos()"><i class="ti ti-check" style="font-size:14px;vertical-align:-1px;margin-right:5px;"></i>Uzavřít → zapsat do journalu</button>
+</div>
 
-    <!-- ─── POZICE ─── -->
-    <div class="tp" id="tp-pos">
-      <div id="tbar" style="display:none;background:var(--gl);border-radius:14px;padding:12px 14px;margin-bottom:10px;">
-        <div class="sl" style="color:var(--glt);margin-bottom:8px;">Celková expozice</div>
-        <div class="g3">
-          <div><div style="font-size:10px;color:var(--t2);">Pozic</div><div style="font-size:16px;font-weight:600;color:var(--t1);" id="tC">0</div></div>
-          <div><div style="font-size:10px;color:var(--t2);">Celk. riziko</div><div style="font-size:16px;font-weight:600;color:var(--r);" id="tR">$0</div></div>
-          <div><div style="font-size:10px;color:var(--t2);">Potenciál</div><div style="font-size:16px;font-weight:600;color:var(--g);" id="tP">$0</div></div>
-        </div>
-      </div>
-      <div class="em" id="emP"><i class="ti ti-chart-candle"></i><p>Žádné otevřené pozice.<br>Přidej z kalkulátoru.</p></div>
-      <div id="plist"></div>
-    </div>
+<!-- ─── POZICE ─── -->
+<div class="tp" id="tp-pos">
+<div id="tbar" style="display:none;background:var(--gl);border-radius:14px;padding:12px 14px;margin-bottom:10px;">
+<div class="sl" style="color:var(--glt);margin-bottom:8px;">Celková expozice</div>
+<div class="g3">
+<div><div style="font-size:10px;color:var(--t2);">Pozic</div><div style="font-size:16px;font-weight:600;color:var(--t1);" id="tC">0</div></div>
+<div><div style="font-size:10px;color:var(--t2);">Celk. riziko</div><div style="font-size:16px;font-weight:600;color:var(--r);" id="tR">$0</div></div>
+<div><div style="font-size:10px;color:var(--t2);">Potenciál</div><div style="font-size:16px;font-weight:600;color:var(--g);" id="tP">$0</div></div>
+</div>
+</div>
+<div class="em" id="emP"><i class="ti ti-chart-candle"></i><p>Žádné otevřené pozice.<br>Přidej z kalkulátoru.</p></div>
+<div id="plist"></div>
+</div>
 
-    <!-- ─── JOURNAL ─── -->
-    <div class="tp" id="tp-jnl">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-        <div class="stat"><div style="font-size:10px;color:var(--t2);">Obchodů</div><div style="font-size:18px;font-weight:600;color:var(--t1);" id="jTotal">0</div></div>
-        <div class="stat"><div style="font-size:10px;color:var(--t2);">Win rate</div><div style="font-size:18px;font-weight:600;" id="jWR">–</div></div>
-        <div class="stat"><div style="font-size:10px;color:var(--t2);">Celkový P&L</div><div style="font-size:18px;font-weight:600;" id="jPL">$0</div></div>
-        <div class="stat"><div style="font-size:10px;color:var(--t2);">Prům. R:R</div><div style="font-size:18px;font-weight:600;color:var(--t1);" id="jRR">–</div></div>
-      </div>
-      <div class="card"><div class="sl">Equity křivka</div><canvas id="eqChart" height="115"></canvas></div>
-      <div class="em" id="emJ"><i class="ti ti-notebook"></i><p>Journal je prázdný.<br>Uzavři obchod z kalkulátoru.</p></div>
-      <div id="jlist"></div>
-    </div>
+<!-- ─── JOURNAL ─── -->
+<div class="tp" id="tp-jnl">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+<div class="stat"><div style="font-size:10px;color:var(--t2);">Obchodů</div><div style="font-size:18px;font-weight:600;color:var(--t1);" id="jTotal">0</div></div>
+<div class="stat"><div style="font-size:10px;color:var(--t2);">Win rate</div><div style="font-size:18px;font-weight:600;" id="jWR">–</div></div>
+<div class="stat"><div style="font-size:10px;color:var(--t2);">Celkový P&L</div><div style="font-size:18px;font-weight:600;" id="jPL">$0</div></div>
+<div class="stat"><div style="font-size:10px;color:var(--t2);">Prům. R:R</div><div style="font-size:18px;font-weight:600;color:var(--t1);" id="jRR">–</div></div>
+</div>
+<div class="card"><div class="sl">Equity křivka</div><canvas id="eqChart" height="115"></canvas></div>
+<div class="em" id="emJ"><i class="ti ti-notebook"></i><p>Journal je prázdný.<br>Uzavři obchod z kalkulátoru.</p></div>
+<div id="jlist"></div>
+</div>
 
-    <!-- ─── EXPORT ─── -->
-    <div class="tp" id="tp-exp">
-      <div class="card">
-        <div class="sl">Shrnutí účtu</div>
-        <div class="erow"><span style="color:var(--t2);">Zůstatek</span><span style="font-weight:500;" id="xBal">–</span></div>
-        <div class="erow"><span style="color:var(--t2);">Riziko / obchod</span><span style="font-weight:500;" id="xRp">–</span></div>
-        <div class="erow"><span style="color:var(--t2);">Denní limit ztráty</span><span style="font-weight:500;color:var(--r);" id="xDL">–</span></div>
-        <div class="erow"><span style="color:var(--t2);">Otevřené pozice</span><span style="font-weight:500;" id="xCnt">–</span></div>
-        <div class="erow"><span style="color:var(--t2);">Uzavřených (journal)</span><span style="font-weight:500;" id="xJC">–</span></div>
-        <div class="erow"><span style="color:var(--t2);">Celkový P&L</span><span style="font-weight:500;color:var(--g);" id="xJPL">–</span></div>
-        <div class="erow"><span style="color:var(--t2);">Win rate</span><span style="font-weight:500;" id="xWR">–</span></div>
-        <div class="erow"><span style="color:var(--t2);">Vygenerováno</span><span style="font-size:11px;color:var(--t2);" id="xDt">–</span></div>
-      </div>
-      <button class="bp" onclick="expPDF()"><i class="ti ti-file-type-pdf" style="font-size:15px;vertical-align:-2px;margin-right:5px;"></i>Exportovat PDF report</button>
-      <button class="bs" onclick="expCSV()"><i class="ti ti-table-export" style="font-size:15px;vertical-align:-2px;margin-right:5px;"></i>Exportovat CSV přehled</button>
-      <div class="tip-box">
-        <div class="sl" style="margin-bottom:6px;">Pravidla risk managementu</div>
-        <div class="tip-row"><i class="ti ti-check"></i>Vždy nastav SL před otevřením pozice</div>
-        <div class="tip-row"><i class="ti ti-check"></i>Nikdy neriskuj více než 2 % na jeden obchod</div>
-        <div class="tip-row"><i class="ti ti-check"></i>Celkové riziko všech pozic udržuj pod 6 % účtu</div>
-        <div class="tip-row"><i class="ti ti-check"></i>Hledej R:R minimálně 1:1,5</div>
-        <div class="tip-row"><i class="ti ti-check"></i>Po dosažení denního limitu přestaň obchodovat</div>
-      </div>
-    </div>
+<!-- ─── EXPORT ─── -->
+<div class="tp" id="tp-exp">
+<div class="card">
+<div class="sl">Shrnutí účtu</div>
+<div class="erow"><span style="color:var(--t2);">Zůstatek</span><span style="font-weight:500;" id="xBal">–</span></div>
+<div class="erow"><span style="color:var(--t2);">Riziko / obchod</span><span style="font-weight:500;" id="xRp">–</span></div>
+<div class="erow"><span style="color:var(--t2);">Denní limit ztráty</span><span style="font-weight:500;color:var(--r);" id="xDL">–</span></div>
+<div class="erow"><span style="color:var(--t2);">Otevřené pozice</span><span style="font-weight:500;" id="xCnt">–</span></div>
+<div class="erow"><span style="color:var(--t2);">Riziko otevř. pozic</span><span style="font-weight:500;color:var(--r);" id="xTR">–</span></div>
+<div class="erow"><span style="color:var(--t2);">Uzavřených (journal)</span><span style="font-weight:500;" id="xJC">–</span></div>
+<div class="erow"><span style="color:var(--t2);">Celkový P&L</span><span style="font-weight:500;color:var(--g);" id="xJPL">–</span></div>
+<div class="erow"><span style="color:var(--t2);">Win rate</span><span style="font-weight:500;" id="xWR">–</span></div>
+<div class="erow"><span style="color:var(--t2);">Vygenerováno</span><span style="font-size:11px;color:var(--t2);" id="xDt">–</span></div>
+</div>
+<button class="bp" onclick="expPDF()"><i class="ti ti-file-type-pdf" style="font-size:15px;vertical-align:-2px;margin-right:5px;"></i>Exportovat PDF report</button>
+<button class="bs" onclick="expCSV()"><i class="ti ti-table-export" style="font-size:15px;vertical-align:-2px;margin-right:5px;"></i>Exportovat CSV přehled</button>
+<div class="tip-box">
+<div class="sl" style="margin-bottom:6px;">Pravidla risk managementu</div>
+<div class="tip-row"><i class="ti ti-check"></i>Vždy nastav SL před otevřením pozice</div>
+<div class="tip-row"><i class="ti ti-check"></i>Nikdy neriskuj více než 2 % na jeden obchod</div>
+<div class="tip-row"><i class="ti ti-check"></i>Celkové riziko všech pozic udržuj pod 6 % účtu</div>
+<div class="tip-row"><i class="ti ti-check"></i>Hledej R:R minimálně 1:1,5</div>
+<div class="tip-row"><i class="ti ti-check"></i>Po dosažení denního limitu přestaň obchodovat</div>
+</div>
+</div>
 
-  </div><!-- /body -->
+</div><!-- /body -->
 
-  <!-- Bottom nav -->
-  <div class="nav">
-    <button class="nb on" id="nb-scan" onclick="swT('scan')"><i class="ti ti-radar"></i><span>Scanner</span></button>
-    <button class="nb" id="nb-calc" onclick="swT('calc')"><i class="ti ti-calculator"></i><span>Kalkulátor</span></button>
-    <button class="nb" id="nb-pos" onclick="swT('pos')"><i class="ti ti-list-check"></i><span>Pozice</span><span class="bdg" id="bP"></span></button>
-    <button class="nb" id="nb-jnl" onclick="swT('jnl')"><i class="ti ti-notebook"></i><span>Journal</span><span class="bdg" id="bJ"></span></button>
-    <button class="nb" id="nb-exp" onclick="swT('exp')"><i class="ti ti-download"></i><span>Export</span></button>
-  </div>
+<!-- Bottom nav -->
+<div class="nav">
+<button class="nb on" id="nb-scan" onclick="swT('scan')"><i class="ti ti-radar"></i><span>Scanner</span></button>
+<button class="nb" id="nb-calc" onclick="swT('calc')"><i class="ti ti-calculator"></i><span>Kalkulátor</span></button>
+<button class="nb" id="nb-pos" onclick="swT('pos')"><i class="ti ti-list-check"></i><span>Pozice</span><span class="bdg" id="bP"></span></button>
+<button class="nb" id="nb-jnl" onclick="swT('jnl')"><i class="ti ti-notebook"></i><span>Journal</span><span class="bdg" id="bJ"></span></button>
+<button class="nb" id="nb-exp" onclick="swT('exp')"><i class="ti ti-download"></i><span>Export</span></button>
+</div>
+
+<!-- Modal: API klíč -->
+<div class="modal-bg" id="keyModalBg">
+<div class="modal-box">
+<div class="modal-title">Twelve Data API klíč</div>
+<div class="modal-sub">Klíč se ukládá jen lokálně v tomto zařízení (localStorage), nikdy se nikam neposílá kromě přímých volání na api.twelvedata.com. Zdarma na twelvedata.com.</div>
+<div class="fi"><input type="text" id="keyInput" placeholder="tvůj Twelve Data API klíč" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+<div class="modal-err" id="keyErr">Zadej prosím platný klíč (min. 8 znaků).</div>
+<div class="modal-row">
+<button class="bs" style="flex:1;" onclick="closeKeyModal()">Zrušit</button>
+<button class="bp" style="flex:1;" onclick="saveKey()">Uložit</button>
+</div>
+</div>
+</div>
+
+<!-- Modal: zapsat výsledek obchodu (náhrada za window.prompt) -->
+<div class="modal-bg" id="closeModalBg">
+<div class="modal-box">
+<div class="modal-title">Zapsat výsledek obchodu</div>
+<div class="modal-sub" id="closeModalSub">Zadej skutečný zisk/ztrátu v USD (záporné číslo = ztráta).</div>
+<div class="fi"><input type="number" id="closePlInput" step="0.01" inputmode="decimal" placeholder="např. -12.50 nebo 34"></div>
+<div class="modal-err" id="closeErr">Zadej platné číslo.</div>
+<div class="modal-row">
+<button class="bs" style="flex:1;" onclick="closeCloseModal()">Zrušit</button>
+<button class="bp" style="flex:1;" onclick="confirmClose()">Uložit do journalu</button>
+</div>
+</div>
+</div>
 
 </div><!-- /ph -->
 
 <script>
 // ─── CONFIG ───────────────────────────────────────────────
-const API_KEY = '283a9e3578e6448886df86dda25af188';
+// API klíč se NEUKLÁDÁ natvrdo do zdrojáku (aby nešel veřejně vidět na GitHubu),
+// ale bere se z localStorage. Uživatel ho zadá přes tlačítko 🔑 při prvním spuštění.
+let API_KEY = localStorage.getItem('mtf_api_key') || '';
 
 // ─── STATE ────────────────────────────────────────────────
 let dark = false, dir = 'long';
@@ -356,6 +386,29 @@ function toggleDark() {
 }
 if (localStorage.getItem('dark') === '1') { dark = true; document.getElementById('ph').classList.add('dark'); document.getElementById('dmb').textContent = '☀️'; }
 
+// ─── API KEY MODAL ────────────────────────────────────────
+function openKeyModal() {
+  document.getElementById('keyInput').value = API_KEY;
+  document.getElementById('keyErr').classList.remove('on');
+  document.getElementById('keyModalBg').classList.add('on');
+}
+function closeKeyModal() { document.getElementById('keyModalBg').classList.remove('on'); }
+function saveKey() {
+  const v = document.getElementById('keyInput').value.trim();
+  if (v.length < 8) { document.getElementById('keyErr').classList.add('on'); return; }
+  API_KEY = v;
+  localStorage.setItem('mtf_api_key', v);
+  closeKeyModal();
+  setApiSt('○ –', 'var(--t2)');
+  log('API klíč uložen.', 'ok');
+}
+function ensureApiKey() {
+  if (API_KEY) return true;
+  log('Chybí API klíč — klikni na 🔑 nahoře a vlož svůj Twelve Data klíč.', 'err');
+  openKeyModal();
+  return false;
+}
+
 // ─── LOG ──────────────────────────────────────────────────
 function log(msg, type = 'info') {
   const el = document.getElementById('logBox');
@@ -371,8 +424,17 @@ const BASE = 'https://api.twelvedata.com';
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
 async function fetchCandles(symbol, interval, outputsize = 55) {
-  const url = `${BASE}/time_series?symbol=${encodeURIComponent(symbol)}&interval=${interval}&outputsize=${outputsize}&apikey=${API_KEY}`;
-  const res = await fetch(url);
+  if (!API_KEY) throw new Error('Chybí API klíč (nastav přes 🔑).');
+  const url = `${BASE}/time_series?symbol=${encodeURIComponent(symbol)}&interval=${interval}&outputsize=${outputsize}&apikey=${encodeURIComponent(API_KEY)}`;
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), 12000);
+  let res;
+  try {
+    res = await fetch(url, { signal: ctrl.signal });
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('Vypršel časový limit požadavku (12s).');
+    throw new Error('Síťová chyba — zkontroluj připojení.');
+  } finally { clearTimeout(to); }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
   if (data.status === 'error') throw new Error(data.message || 'API error');
@@ -385,6 +447,7 @@ const closes = c => c.map(x => parseFloat(x.close));
 
 function ema(arr, n) {
   if (arr.length < n) n = arr.length;
+  if (n === 0) return [];
   const k = 2 / (n + 1);
   let e = arr.slice(0, n).reduce((a, b) => a + b, 0) / n;
   const out = new Array(n - 1).fill(null); out.push(e);
@@ -458,8 +521,8 @@ function analyzeTF(candles) {
   const last = cl[cl.length - 1];
   const e20arr = ema(cl, Math.min(20, cl.length));
   const e50arr = ema(cl, Math.min(50, cl.length));
-  const e20 = e20arr[e20arr.length - 1];
-  const e50 = e50arr[e50arr.length - 1];
+  const e20 = e20arr.length ? e20arr[e20arr.length - 1] : null;
+  const e50 = e50arr.length ? e50arr[e50arr.length - 1] : null;
   const rsiV = rsi(cl, Math.min(14, cl.length - 2));
   const atrV = atr(candles, Math.min(14, candles.length - 1));
   const adxV = adx(candles, Math.min(14, Math.floor(candles.length / 2)));
@@ -488,6 +551,7 @@ function analyzeTF(candles) {
 // ─── SCANNER ──────────────────────────────────────────────
 async function startScan() {
   if (scanning) return;
+  if (!ensureApiKey()) return;
   scanning = true;
   const btn = document.getElementById('refBtn');
   btn.disabled = true; btn.textContent = 'Načítám…';
@@ -496,7 +560,6 @@ async function startScan() {
   setApiSt('● FETCH', 'var(--a)');
   log('Spouštím scan pro ' + activeSyms.length + ' instrumentů…');
   log('Sekvenční volání — 900ms prodleva (rate limit free plánu)', 'warn');
-
   for (const sym of activeSyms) {
     const short = sym.replace('/', '');
     const ph = document.createElement('div');
@@ -516,10 +579,12 @@ async function startScan() {
       const sig = overall >= 62 ? 'bull' : overall <= 38 ? 'bear' : 'neu';
       const atrV = a1h.atrV;
       log(`${short}: ✓ skóre ${overall} → ${sig.toUpperCase()}`, 'ok');
-      document.getElementById('lc-' + short).outerHTML = buildCard({ sym, price, a1h, a1d, overall, sig, atrV });
+      const card = document.getElementById('lc-' + short);
+      if (card) card.outerHTML = buildCard({ sym, price, a1h, a1d, overall, sig, atrV });
     } catch (e) {
       log(`${short}: ✗ ${e.message}`, 'err');
-      document.getElementById('lc-' + short).outerHTML = `<div class="err-card"><div class="err-title">✗ ${short} — chyba</div><div>${e.message}</div>${e.message.includes('rate') || e.message.includes('limit') ? '<div style="margin-top:4px;">⚠️ Rate limit — počkej minutu.</div>' : ''}</div>`;
+      const card = document.getElementById('lc-' + short);
+      if (card) card.outerHTML = `<div class="err-card"><div class="err-title">✗ ${short} — chyba</div><div>${e.message}</div>${/rate|limit/i.test(e.message) ? '<div style="margin-top:4px;">⚠️ Rate limit — počkej minutu.</div>' : ''}</div>`;
     }
     if (sym !== activeSyms[activeSyms.length - 1]) await delay(900);
   }
@@ -591,6 +656,7 @@ function loadCalc(sym, price, atrV, sig) {
 
 // ─── CALCULATOR ───────────────────────────────────────────
 async function selI(el, sym, pip, contract) {
+  if (!ensureApiKey()) return;
   document.querySelectorAll('#calcPills .pi').forEach(p => p.classList.remove('on'));
   el.classList.add('on');
   ID = { pip, contract, name: sym };
@@ -618,12 +684,13 @@ function setDir(d) {
 function f(n, d = 2) { return isFinite(n) ? Math.abs(n).toFixed(d) : '–'; }
 
 function calc() {
-  const bal = +document.getElementById('bal').value || 0;
-  const rp = +document.getElementById('rp').value || 1;
+  const bal = Math.max(0, +document.getElementById('bal').value || 0);
+  const rp = Math.min(10, Math.max(0.1, +document.getElementById('rp').value || 1));
   const en = +document.getElementById('en').value || 0;
   const sl = +document.getElementById('sl2').value || 0;
   const tp = +document.getElementById('tp2').value || 0;
   const { pip, contract } = ID;
+
   const riskAmt = bal * rp / 100;
   const slD = Math.abs(en - sl), tpD = tp ? Math.abs(en - tp) : 0;
   const lots = slD > 0 ? riskAmt / (slD * contract) : 0;
@@ -632,58 +699,78 @@ function calc() {
   const pot = tpD > 0 ? lr * tpD * contract : 0;
   const rr = tpD > 0 && slD > 0 ? tpD / slD : 0;
   const posVal = lr * en * contract;
+
   const slOk = dir === 'long' ? sl < en : sl > en;
   const tpOk = !tp || (dir === 'long' ? tp > en : tp < en);
+
   const w = [];
-  if (slD === 0) w.push('SL je stejný jako vstupní cena.');
+  if (en <= 0) w.push('Vyplň vstupní cenu.');
+  if (slD === 0 && en > 0) w.push('SL je stejný jako vstupní cena.');
   if (!slOk && slD > 0) w.push('SL je na špatné straně pro ' + (dir === 'long' ? 'Long' : 'Short') + '.');
   if (tp && !tpOk) w.push('TP je na špatné straně od vstupu.');
-  if (rp > 3) w.push('Riziko ' + rp + '% překračuje doporučenou hranici 2%.');
+  // Sladěno s doporučením v sekci Export ("nikdy neriskuj více než 2 % na obchod")
+  if (rp > 2) w.push('Riziko ' + rp + '% překračuje doporučenou hranici 2%.');
   if (rr > 0 && rr < 1) w.push('R:R 1:' + f(rr) + ' je pod doporučenou hodnotou 1:1.');
+  if (lr <= 0 && slD > 0 && bal > 0) w.push('Velikost pozice vyšla 0 lotů — riziko na obchod je příliš malé pro tento SL.');
+
   const wn = document.getElementById('wn');
   wn.textContent = w.join(' '); wn.className = 'wn' + (w.length ? ' on' : '');
+
   document.getElementById('rL').textContent = lr > 0 ? f(lr, 2) + ' lotů' : '– lotů';
-  document.getElementById('rS').textContent = 'Riziko $' + f(aRisk) + ' | ' + f(aRisk / bal * 100, 2) + '% účtu';
+  document.getElementById('rS').textContent = bal > 0 ? 'Riziko $' + f(aRisk) + ' | ' + f(aRisk / bal * 100, 2) + '% účtu' : 'Vyplň zůstatek účtu';
   document.getElementById('mRi').textContent = '-$' + f(aRisk);
   document.getElementById('mPr').textContent = tp ? '+$' + f(pot) : '—';
   document.getElementById('mRR').textContent = rr > 0 ? '1:' + f(rr) : '—';
   document.getElementById('mPct').textContent = bal > 0 ? f(aRisk / bal * 100, 2) + '%' : '–';
   document.getElementById('mPV').textContent = '$' + Math.round(posVal).toLocaleString('cs');
+
   const rrT = document.getElementById('rrT');
   if (rr > 0 && tpD > 0) { rrT.style.display = 'flex'; const tot = slD + tpD; document.getElementById('rrL').style.width = (slD / tot * 100).toFixed(1) + '%'; document.getElementById('rrR').style.width = (tpD / tot * 100).toFixed(1) + '%'; }
   else rrT.style.display = 'none';
+
   lastC = { bal, rp, en, sl, tp, lots: lr, aRisk, pot, rr, name: ID.name, dir, slD, tpD, posVal };
   chkLim();
 }
 
 function chkLim() {
-  const bal = +document.getElementById('bal').value || 0;
-  const dlim = +document.getElementById('dlim').value || 3;
+  const bal = Math.max(0, +document.getElementById('bal').value || 0);
+  const dlim = Math.max(0.1, +document.getElementById('dlim').value || 3);
   const today = new Date().toDateString();
   const loss = journal.filter(j => new Date(j.ts).toDateString() === today && j.pl < 0).reduce((s, j) => s + Math.abs(j.pl), 0);
   const limit = bal * dlim / 100;
   const ab = document.getElementById('alertBox');
-  if (loss >= limit) { ab.className = 'alert-box on'; ab.textContent = '⚠️ Denní limit ztráty dosažen! Ztráta dnes: $' + loss.toFixed(2) + ' / limit $' + limit.toFixed(2) + '. Přestaň obchodovat.'; }
+  if (limit > 0 && loss >= limit) { ab.className = 'alert-box on'; ab.textContent = '⚠️ Denní limit ztráty dosažen! Ztráta dnes: $' + loss.toFixed(2) + ' / limit $' + limit.toFixed(2) + '. Přestaň obchodovat.'; }
   else ab.className = 'alert-box';
 }
 
 // ─── POSITIONS ────────────────────────────────────────────
 function addPos() {
   const { lots, aRisk, pot, rr, name, dir, en, sl, tp } = lastC;
-  if (!lots || lots <= 0) { alert('Nejprve správně vyplň kalkulátor.'); return; }
+  if (!lots || lots <= 0) { alert('Nejprve správně vyplň kalkulátor (vstup, SL a zůstatek účtu).'); return; }
   positions.push({ id: Date.now(), name, dir, lots, entry: en, sl, tp, risk: aRisk, profit: pot, rr });
   save(); renderPos(); badge(); swT('pos');
 }
 
+let pendingClose = null;
 function closePos() {
   const { lots, aRisk, pot, rr, name, dir, en, sl, tp } = lastC;
-  if (!lots || lots <= 0) { alert('Nejprve vyplň kalkulátor.'); return; }
-  const pl = prompt('Skutečný zisk/ztráta obchodu v USD\n(záporné číslo = ztráta):');
-  if (pl === null) return;
-  const plN = parseFloat(pl);
-  if (isNaN(plN)) { alert('Neplatné číslo.'); return; }
+  if (!lots || lots <= 0) { alert('Nejprve vyplň kalkulátor (vstup, SL a zůstatek účtu).'); return; }
+  pendingClose = { lots, aRisk, pot, rr, name, dir, en, sl, tp };
+  document.getElementById('closeModalSub').textContent = `${name.replace('/', '')} · ${dir === 'long' ? 'Long' : 'Short'} · ${lots.toFixed(2)} lotů — zadej skutečný zisk/ztrátu v USD.`;
+  document.getElementById('closePlInput').value = '';
+  document.getElementById('closeErr').classList.remove('on');
+  document.getElementById('closeModalBg').classList.add('on');
+}
+function closeCloseModal() { document.getElementById('closeModalBg').classList.remove('on'); pendingClose = null; }
+function confirmClose() {
+  const raw = document.getElementById('closePlInput').value;
+  const plN = parseFloat(raw);
+  if (raw === '' || isNaN(plN)) { document.getElementById('closeErr').classList.add('on'); return; }
+  const { lots, aRisk, pot, rr, name, dir, en, sl, tp } = pendingClose;
   journal.push({ id: Date.now(), ts: new Date().toISOString(), name, dir, lots, entry: en, sl, tp, risk: aRisk, profit: pot, rr, pl: plN });
-  save(); renderJnl(); badge(); chkLim(); swT('jnl');
+  save(); renderJnl(); badge(); chkLim();
+  closeCloseModal();
+  swT('jnl');
 }
 
 function delPos(id) { positions = positions.filter(p => p.id !== id); save(); renderPos(); badge(); }
@@ -722,12 +809,14 @@ function renderJnl() {
   const wr = document.getElementById('jWR'); wr.textContent = n ? Math.round(wins / n * 100) + '%' : '–'; wr.style.color = n && wins / n >= 0.5 ? 'var(--g)' : 'var(--r)';
   const pl = document.getElementById('jPL'); pl.textContent = (totalPL >= 0 ? '+' : '') + `$${Math.abs(totalPL).toFixed(2)}`; pl.style.color = totalPL >= 0 ? 'var(--g)' : 'var(--r)';
   document.getElementById('jRR').textContent = n ? '1:' + avgRR.toFixed(2) : '–';
+
   let cum = 0; const eq = journal.map(j => { cum += j.pl; return Math.round(cum * 100) / 100; });
   const ctx = document.getElementById('eqChart').getContext('2d');
   if (eqChart) eqChart.destroy();
   const tc = dark ? 'rgba(255,255,255,.4)' : 'rgba(0,0,0,.35)';
   const gc = dark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.04)';
   eqChart = new Chart(ctx, { type: 'line', data: { labels: journal.map((_, i) => '#' + (i + 1)), datasets: [{ data: eq, borderColor: totalPL >= 0 ? '#1D9E75' : '#E24B4A', backgroundColor: totalPL >= 0 ? 'rgba(29,158,117,.1)' : 'rgba(226,75,74,.1)', borderWidth: 2, fill: true, pointRadius: n < 20 ? 3 : 0, tension: .35 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: tc, font: { size: 9 }, maxTicksLimit: 6 }, grid: { color: gc } }, y: { ticks: { color: tc, font: { size: 9 }, callback: v => '$' + v }, grid: { color: gc } } } } });
+
   const em = document.getElementById('emJ'), list = document.getElementById('jlist');
   if (!n) { em.style.display = 'block'; list.innerHTML = ''; return; }
   em.style.display = 'none';
@@ -798,20 +887,27 @@ function expPDF() {
 }
 
 function expCSV() {
+  const esc = v => `"${String(v).replace(/"/g, '""')}"`;
   let csv = 'sep=,\nMTF Trading Report\n\n=== JOURNAL ===\nDatum,Symbol,Směr,Loty,Vstup,SL,TP,P&L,RR\n';
-  journal.forEach(j => { csv += `${new Date(j.ts).toLocaleDateString('cs-CZ')},${j.name},${j.dir},${j.lots},${j.entry},${j.sl || ''},${j.tp || ''},${j.pl.toFixed(2)},${j.rr.toFixed(2)}\n`; });
+  journal.forEach(j => { csv += `${esc(new Date(j.ts).toLocaleDateString('cs-CZ'))},${esc(j.name)},${esc(j.dir)},${esc(j.lots)},${esc(j.entry)},${esc(j.sl || '')},${esc(j.tp || '')},${esc(j.pl.toFixed(2))},${esc((j.rr || 0).toFixed(2))}\n`; });
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })); a.download = 'mtf-report.csv'; a.click();
 }
 
 // ─── STORAGE (localStorage pro standalone app) ─────────────
 function save() {
-  try { localStorage.setItem('mtf_pos', JSON.stringify(positions)); localStorage.setItem('mtf_jnl', JSON.stringify(journal)); } catch (e) { }
+  try { localStorage.setItem('mtf_pos', JSON.stringify(positions)); localStorage.setItem('mtf_jnl', JSON.stringify(journal)); }
+  catch (e) { log('Uložení selhalo: ' + e.message, 'err'); }
 }
 function loadData() {
-  try { const p = localStorage.getItem('mtf_pos'); const j = localStorage.getItem('mtf_jnl'); if (p) positions = JSON.parse(p); if (j) journal = JSON.parse(j); } catch (e) { }
+  try {
+    const p = localStorage.getItem('mtf_pos'); const j = localStorage.getItem('mtf_jnl');
+    if (p) positions = JSON.parse(p); if (j) journal = JSON.parse(j);
+  } catch (e) { log('Načtení uložených dat selhalo, data mohla být poškozená.', 'err'); }
   renderPos(); badge(); chkLim();
 }
 loadData();
+
+if (!API_KEY) setApiSt('○ chybí klíč', 'var(--r)');
 
 // ─── SERVICE WORKER ───────────────────────────────────────
 if ('serviceWorker' in navigator) {
