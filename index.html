@@ -524,12 +524,13 @@ function volRatio(candles, n = 20) {
 // Strukturální SL/TP — kombinuje čistě mechanický ATR násobek s nejbližším swing high/low
 // z posledních `lookback` svící. Cíl: SL nesedí uprostřed "prázdna", kde by ho snadno
 // vzal šum, ale respektuje reálnou strukturu trhu. TP zase nemíří skrz blízkou
-// rezistenci/support, pokud tam nějaká je. Riziko je vždy omezeno na max. 3×ATR.
+// rezistenci/support, pokud tam nějaká je. Riziko je vždy omezeno na max. 2×ATR
+// a TP je vždy minimálně 1.5× dál než SL (min. R:R 1:1.5).
 function computeStops(candles, price, atrV, isLong, lookback = 20) {
   const recent = candles.slice(-Math.min(lookback, candles.length));
   const swingLow = Math.min(...recent.map(c => parseFloat(c.low)));
   const swingHigh = Math.max(...recent.map(c => parseFloat(c.high)));
-  const atrSLdist = atrV * 1.5, atrTPdist = atrV * 2.5, maxSLdist = atrV * 3;
+  const atrSLdist = atrV * 1.5, atrTPdist = atrV * 2.5, maxSLdist = atrV * 2;
   let sl, tp, slBasis, tpBasis;
   if (isLong) {
     const atrSL = price - atrSLdist;
@@ -549,6 +550,12 @@ function computeStops(candles, price, atrV, isLong, lookback = 20) {
     const atrTP = price - atrTPdist;
     if (swingLow < price - atrV && swingLow > atrTP) { tp = swingLow; tpBasis = 'struktura'; }
     else { tp = atrTP; tpBasis = 'ATR'; }
+  }
+  // Minimální R:R 1:1.5 — pokud je TP blíž než 1.5× vzdálenost SL, posuň ho dál
+  const slDist = Math.abs(price - sl), minTPdist = slDist * 1.5;
+  if (Math.abs(tp - price) < minTPdist) {
+    tp = isLong ? price + minTPdist : price - minTPdist;
+    tpBasis = 'R:R 1.5';
   }
   return { sl, tp, slBasis, tpBasis };
 }
@@ -800,8 +807,16 @@ function calc() {
 
   const riskAmt = bal * rp / 100;
   const slD = Math.abs(en - sl), tpD = tp ? Math.abs(en - tp) : 0;
-  const lots = slD > 0 ? riskAmt / (slD * contract) : 0;
-  const lr = Math.floor(lots * 100) / 100;
+
+  // Velikost pozice: zaokrouhlí se dolů na krok lotu (0.01). Pokud vyjde méně než
+  // minimální lot, použije se minimální lot a ukáže se jeho skutečné riziko + varování.
+  const LOT_STEP = 0.01, MIN_LOT = 0.01;
+  const rawLots = slD > 0 ? riskAmt / (slD * contract) : 0;
+  let lr = Math.floor(rawLots / LOT_STEP + 1e-9) * LOT_STEP;
+  const minLotForced = slD > 0 && bal > 0 && lr < MIN_LOT;
+  if (minLotForced) lr = MIN_LOT;
+  lr = Math.round(lr * 1000) / 1000;
+
   const aRisk = lr * slD * contract;
   const pot = tpD > 0 ? lr * tpD * contract : 0;
   const rr = tpD > 0 && slD > 0 ? tpD / slD : 0;
@@ -818,13 +833,13 @@ function calc() {
   // Sladěno s doporučením v sekci Export ("nikdy neriskuj více než 2 % na obchod")
   if (rp > 2) w.push('Riziko ' + rp + '% překračuje doporučenou hranici 2%.');
   if (rr > 0 && rr < 1) w.push('R:R 1:' + f(rr) + ' je pod doporučenou hodnotou 1:1.');
-  if (lr <= 0 && slD > 0 && bal > 0) w.push('Velikost pozice vyšla 0 lotů — riziko na obchod je příliš malé pro tento SL.');
+  if (minLotForced) w.push('SL je na tento účet příliš široký: min. lot ' + MIN_LOT + ' znamená riziko $' + f(aRisk) + ' (' + f(aRisk / bal * 100, 2) + '% účtu) místo nastavených ' + rp + '%.');
 
   const wn = document.getElementById('wn');
   wn.textContent = w.join(' '); wn.className = 'wn' + (w.length ? ' on' : '');
 
   document.getElementById('rL').textContent = lr > 0 ? f(lr, 2) + ' lotů' : '– lotů';
-  document.getElementById('rS').textContent = bal > 0 ? 'Riziko $' + f(aRisk) + ' | ' + f(aRisk / bal * 100, 2) + '% účtu' : 'Vyplň zůstatek účtu';
+  document.getElementById('rS').textContent = bal > 0 ? 'Riziko $' + f(aRisk) + ' | ' + f(aRisk / bal * 100, 2) + '% účtu' + (minLotForced ? ' ⚠ min. lot' : '') : 'Vyplň zůstatek účtu';
   document.getElementById('mRi').textContent = '-$' + f(aRisk);
   document.getElementById('mPr').textContent = tp ? '+$' + f(pot) : '—';
   document.getElementById('mRR').textContent = rr > 0 ? '1:' + f(rr) : '—';
