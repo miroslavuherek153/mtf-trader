@@ -560,6 +560,16 @@ function computeStops(candles, price, atrV, isLong, lookback = 20) {
   return { sl, tp, slBasis, tpBasis };
 }
 
+// Sniper stopy — rychlý scalping cíl. Na rozdíl od computeStops nehledá strukturu
+// ani nevynucuje R:R 1:1.5: TP je záměrně blízko (0.5×ATR), SL dál (1×ATR), R:R 1:0.5.
+// Funguje jen s win rate nad ~67 %; sleduj to v Journalu, ne v backtestu.
+function computeSniperStops(price, atrV, isLong, tpMult = 0.5, slMult = 1) {
+  const tpDist = atrV * tpMult, slDist = atrV * slMult;
+  return isLong
+    ? { sl: price - slDist, tp: price + tpDist }
+    : { sl: price + slDist, tp: price - tpDist };
+}
+
 function analyzeTF(candles) {
   if (!candles || candles.length < 10) return { trend: 'neu', score: 50, rsiV: null, atrV: 0, label: '–', e20: null, e50: null, last: 0, adxV: null, volR: null };
   const cl = closes(candles);
@@ -672,6 +682,11 @@ function buildCard(d) {
     if (!d.confluent) sigTxt += ' ⚠️ Rámce (1H/4H/1D) si neodpovídají — nižší kvalita signálu.';
   }
   const sigIcon = d.sig === 'bull' ? '🟢 LONG signal' : d.sig === 'bear' ? '🔴 SHORT signal' : '⚪ Žádný signal';
+  let sniperTxt = '';
+  if (d.sig !== 'neu') {
+    const sn = computeSniperStops(p, d.atrV, d.sig === 'bull');
+    sniperTxt = `<div class="sig-box ${d.sig}" style="margin-top:6px;opacity:.85;"><div class="sig-title">🎯 Sniper (rychlý)</div><div style="font-size:11px;">SL ${sn.sl.toFixed(2)} → TP ${sn.tp.toFixed(2)} · R:R 1:0.5, potřebuje &gt;67% win rate</div></div>`;
+  }
   const adxLbl = d.a1h.adxV !== null ? d.a1h.adxV.toFixed(0) : '–';
   const adxCls = d.a1h.adxV === null ? '' : d.a1h.adxV >= 25 ? 'pos' : d.a1h.adxV < 20 ? 'warn' : '';
   const volLbl = d.a1h.volR !== null ? d.a1h.volR.toFixed(1) + 'x' : '–';
@@ -702,6 +717,7 @@ function buildCard(d) {
       <div class="score-bar"><div class="score-fill" style="width:${d.overall}%;background:${d.sig === 'bull' ? 'var(--g)' : d.sig === 'bear' ? 'var(--r)' : 'var(--t2)'}"></div></div>
     </div>
     <div class="sig-box ${d.sig}"><div class="sig-title">${sigIcon}</div><div style="font-size:11px;">${sigTxt}</div></div>
+    ${sniperTxt}
   </div>`;
 }
 
