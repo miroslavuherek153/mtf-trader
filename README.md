@@ -4,23 +4,11 @@ Tahle appka po nasazení funguje jako instalovatelná appka na Androidu (i iPhon
 
 ---
 
-## 1. Vlož svůj API klíč
+## 1. API klíč
 
-Otevři `index.html`, najdi řádek (je hned v `<script>` sekci):
+API klíč se **nevkládá do kódu**. Po otevření appky klikni nahoře na 🔑 a vlož svůj Twelve Data klíč (zdarma na twelvedata.com). Klíč se uloží jen lokálně v zařízení (localStorage), takže není vidět ve zdrojovém kódu na GitHubu. Na každém zařízení/prohlížeči je potřeba ho zadat jednou.
 
-```js
-const API_KEY = 'VLOZ_SVUJ_API_KLIC';
-```
-
-Nahraď za svůj reálný Twelve Data klíč:
-
-```js
-const API_KEY = 'tvuj-skutecny-klic-zde';
-```
-
-**Důležité:** Tento klíč bude veřejně viditelný v HTML zdrojovém kódu na GitHubu (pokud repozitář necháš public). Pro osobní demo použití je to v pořádku, ale:
-- Twelve Data free klíč nemá citlivá oprávnění (jen čtení trh. dat)
-- Pokud chceš klíč skrýt, řešením je vlastní proxy server — pro tento účel to ale není nutné
+Kalkulátor, pozice a journal fungují i bez klíče (ruční zadání cen) — klíč je potřeba jen pro scanner a načtení živé ceny.
 
 ---
 

@@ -41,7 +41,7 @@ html,body{height:100%;background:var(--bg0);}
 body{display:flex;justify-content:center;align-items:flex-start;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden;}
 /* ── Phone shell (desktop) / full screen (mobile) ── */
 .ph{
-width:100%;max-width:430px;height:100vh;
+width:100%;max-width:430px;height:100vh;height:100dvh;
 background:var(--bg1);
 display:flex;flex-direction:column;
 position:relative;overflow:hidden;
@@ -230,21 +230,21 @@ display:flex;background:var(--bg1);flex-shrink:0;
 <div class="card">
 <div class="sl">Instrument <span id="calcSrc" style="color:var(--g);font-weight:400;font-size:10px;"></span></div>
 <div class="pills" id="calcPills">
-<button class="pi on" onclick="selI(this,'XAU/USD',0.01,100)">XAUUSD</button>
-<button class="pi" onclick="selI(this,'BTC/USD',1,1)">BTCUSD</button>
-<button class="pi" onclick="selI(this,'ETH/USD',1,1)">ETHUSD</button>
-<button class="pi" onclick="selI(this,'EUR/USD',0.00001,100000)">EURUSD</button>
-<button class="pi" onclick="selI(this,'GBP/USD',0.00001,100000)">GBPUSD</button>
-<button class="pi" onclick="selI(this,'AAPL',0.01,1)">AAPL</button>
+<button class="pi on" data-sym="XAU/USD" onclick="selI(this,'XAU/USD',0.01,100)">XAUUSD</button>
+<button class="pi" data-sym="BTC/USD" onclick="selI(this,'BTC/USD',1,1)">BTCUSD</button>
+<button class="pi" data-sym="ETH/USD" onclick="selI(this,'ETH/USD',1,1)">ETHUSD</button>
+<button class="pi" data-sym="EUR/USD" onclick="selI(this,'EUR/USD',0.00001,100000)">EURUSD</button>
+<button class="pi" data-sym="GBP/USD" onclick="selI(this,'GBP/USD',0.00001,100000)">GBPUSD</button>
+<button class="pi" data-sym="AAPL" onclick="selI(this,'AAPL',0.01,1)">AAPL</button>
 </div>
 <div class="dtog">
 <button class="db onL" id="dL" onclick="setDir('long')">▲ Long (nákup)</button>
 <button class="db" id="dS" onclick="setDir('short')">▼ Short (prodej)</button>
 </div>
 <div class="g3">
-<div class="fi"><label>Vstupní cena</label><input type="number" id="en" value="" step="0.01" inputmode="decimal" oninput="autoFilled=false;calc()"></div>
-<div class="fi"><label>Stop Loss</label><input type="number" id="sl2" value="" step="0.01" inputmode="decimal" oninput="autoFilled=false;clearStopBasis();calc()"></div>
-<div class="fi"><label>Take Profit</label><input type="number" id="tp2" value="" step="0.01" inputmode="decimal" oninput="autoFilled=false;clearStopBasis();calc()"></div>
+<div class="fi"><label>Vstupní cena</label><input type="number" id="en" value="" step="any" inputmode="decimal" oninput="autoFilled=false;calc()"></div>
+<div class="fi"><label>Stop Loss</label><input type="number" id="sl2" value="" step="any" inputmode="decimal" oninput="autoFilled=false;clearStopBasis();calc()"></div>
+<div class="fi"><label>Take Profit</label><input type="number" id="tp2" value="" step="any" inputmode="decimal" oninput="autoFilled=false;clearStopBasis();calc()"></div>
 </div>
 <div id="stopBasis" style="font-size:10px;color:var(--t2);margin-top:-4px;"></div>
 </div>
@@ -291,7 +291,7 @@ display:flex;background:var(--bg1);flex-shrink:0;
 <div class="stat"><div style="font-size:10px;color:var(--t2);">Profit factor</div><div style="font-size:18px;font-weight:600;" id="jPF">–</div></div>
 <div class="stat"><div style="font-size:10px;color:var(--t2);">Ø reálné R</div><div style="font-size:18px;font-weight:600;" id="jAvgR">–</div></div>
 </div>
-<div class="card"><div class="sl">Equity křivka</div><canvas id="eqChart" height="115"></canvas></div>
+<div class="card"><div class="sl">Equity křivka</div><div style="position:relative;height:130px;"><canvas id="eqChart"></canvas></div></div>
 <div class="em" id="emJ"><i class="ti ti-notebook"></i><p>Journal je prázdný.<br>Uzavři obchod z kalkulátoru.</p></div>
 <div id="jlist"></div>
 </div>
@@ -386,11 +386,12 @@ clk(); setInterval(clk, 20000);
 // ─── DARK MODE ────────────────────────────────────────────
 function toggleDark() {
   dark = !dark;
-  document.getElementById('ph').classList.toggle('dark', dark);
+  document.documentElement.classList.toggle('dark', dark);
   document.getElementById('dmb').textContent = dark ? '☀️' : '🌙';
   localStorage.setItem('dark', dark ? '1' : '0');
+  if (eqChart) renderJnl(); // barvy os grafu závisí na dark mode
 }
-if (localStorage.getItem('dark') === '1') { dark = true; document.getElementById('ph').classList.add('dark'); document.getElementById('dmb').textContent = '☀️'; }
+if (localStorage.getItem('dark') === '1') { dark = true; document.documentElement.classList.add('dark'); document.getElementById('dmb').textContent = '☀️'; }
 
 // ─── API KEY MODAL ────────────────────────────────────────
 function openKeyModal() {
@@ -416,11 +417,13 @@ function ensureApiKey() {
 }
 
 // ─── LOG ──────────────────────────────────────────────────
+// Texty z API (chybové hlášky) se vkládají přes innerHTML — escapovat.
+function escHtml(v) { return String(v).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])); }
 function log(msg, type = 'info') {
   const el = document.getElementById('logBox');
   const c = type === 'ok' ? 'var(--g)' : type === 'err' ? 'var(--r)' : type === 'warn' ? 'var(--a)' : 'var(--t2)';
   const t = new Date().toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  el.innerHTML += `<span style="color:${c}">[${t}] ${msg}</span>\n`;
+  el.innerHTML += `<span style="color:${c}">[${t}] ${escHtml(msg)}</span>\n`;
   el.scrollTop = el.scrollHeight;
 }
 function setApiSt(s, c) { const el = document.getElementById('apiSt'); el.textContent = s; el.style.color = c; }
@@ -447,6 +450,14 @@ async function fetchCandles(symbol, interval, outputsize = 55) {
   if (!data.values || !data.values.length) throw new Error('Žádná data pro ' + symbol);
   return data.values.reverse();
 }
+
+// ─── FORMÁTOVÁNÍ CEN ──────────────────────────────────────
+// Forex páry mají 5 desetinných míst (JPY 3) — dřív se všechny ceny (vstup, SL,
+// TP) zaokrouhlovaly na 2 místa, takže u EURUSD vyšel vstup 1.09 a SL 1.08
+// a kalkulátor počítal s úplně jinou vzdáleností SL (a tedy velikostí pozice).
+function isForexSym(sym) { return /^(EUR|GBP|USD|JPY|AUD|NZD|CAD|CHF)\/(EUR|GBP|USD|JPY|AUD|NZD|CAD|CHF)$/.test(sym); }
+function priceDec(sym) { return isForexSym(sym) ? (sym.includes('JPY') ? 3 : 5) : 2; }
+function fmtP(v, sym) { return (+v).toFixed(priceDec(sym)); }
 
 // ─── INDICATORS ───────────────────────────────────────────
 const closes = c => c.map(x => parseFloat(x.close));
@@ -511,12 +522,14 @@ function adx(candles, n = 14) {
   return a;
 }
 
-// Volume ratio — poslední objem vs průměr posledních n svíček. Vrací null když data nemají objem (některé FX páry).
+// Volume ratio — objem poslední UZAVŘENÉ svíčky vs průměr n svíček před ní. Vrací null když data nemají objem (některé FX páry).
+// Oprava: dřív se bral objem poslední, ještě rozpracované svíčky (Twelve Data ji vrací jako poslední) —
+// ten je na začátku hodiny/dne vždy malý, takže volR vycházel systematicky < 0.7 a tlumil skóre.
 function volRatio(candles, n = 20) {
   const vols = candles.map(c => parseFloat(c.volume || 0));
-  if (vols.every(v => v === 0)) return null;
-  const last = vols[vols.length - 1];
-  const histo = vols.slice(-n - 1, -1);
+  if (vols.length < 3 || vols.every(v => v === 0)) return null;
+  const last = vols[vols.length - 2];
+  const histo = vols.slice(-n - 2, -2);
   const avg = histo.length ? histo.reduce((a, b) => a + b, 0) / histo.length : 0;
   return avg > 0 ? last / avg : null;
 }
@@ -635,7 +648,6 @@ async function startScan() {
       await delay(API_DELAY);
       log(`${short}: načítám 1D…`);
       const c1d = await fetchCandles(sym, '1day', 55);
-      await delay(API_DELAY);
       const a1h = analyzeTF(c1h), a4h = analyzeTF(c4h), a1d = analyzeTF(c1d);
       const price = a1h.last;
       // Váhy rostou s vyšším rámcem: 1H×1, 4H×1.5, 1D×2 (dělitel 4.5)
@@ -656,7 +668,7 @@ async function startScan() {
     } catch (e) {
       log(`${short}: ✗ ${e.message}`, 'err');
       const card = document.getElementById('lc-' + short);
-      if (card) card.outerHTML = `<div class="err-card"><div class="err-title">✗ ${short} — chyba</div><div>${e.message}</div>${/rate|limit/i.test(e.message) ? '<div style="margin-top:4px;">⚠️ Rate limit — počkej minutu.</div>' : ''}</div>`;
+      if (card) card.outerHTML = `<div class="err-card"><div class="err-title">✗ ${short} — chyba</div><div>${escHtml(e.message)}</div>${/rate|limit/i.test(e.message) ? '<div style="margin-top:4px;">⚠️ Rate limit — počkej minutu.</div>' : ''}</div>`;
     }
     if (sym !== activeSyms[activeSyms.length - 1]) await delay(API_DELAY);
   }
@@ -668,7 +680,7 @@ async function startScan() {
 
 function buildCard(d) {
   const p = d.price;
-  const pFmt = p > 1000 ? p.toFixed(2) : p > 10 ? p.toFixed(2) : p.toFixed(5);
+  const pFmt = fmtP(p, d.sym);
   const pC = d.sig === 'bull' ? 'var(--g)' : d.sig === 'bear' ? 'var(--r)' : 'var(--t2)';
   const weakTrend = d.a1h.adxV !== null && d.a1h.adxV < 20;
   let sigTxt;
@@ -676,7 +688,7 @@ function buildCard(d) {
     sigTxt = 'Smíšené signály — počkej na potvrzení.';
   } else {
     const dirWord = d.sig === 'bull' ? 'Long' : 'Short';
-    const slFmt = d.stops.sl.toFixed(2), tpFmt = d.stops.tp.toFixed(2);
+    const slFmt = fmtP(d.stops.sl, d.sym), tpFmt = fmtP(d.stops.tp, d.sym);
     sigTxt = `${dirWord} setup: SL ${slFmt} (${d.stops.slBasis}) → TP ${tpFmt} (${d.stops.tpBasis})`;
     if (weakTrend) sigTxt += ' ⚠️ ADX < 20 — slabý trend, vyšší riziko falešného signálu.';
     if (!d.confluent) sigTxt += ' ⚠️ Rámce (1H/4H/1D) si neodpovídají — nižší kvalita signálu.';
@@ -685,7 +697,7 @@ function buildCard(d) {
   let sniperTxt = '';
   if (d.sig !== 'neu') {
     const sn = computeSniperStops(p, d.atrV, d.sig === 'bull');
-    sniperTxt = `<div class="sig-box ${d.sig}" style="margin-top:6px;opacity:.85;"><div class="sig-title">🎯 Sniper (rychlý)</div><div style="font-size:11px;">SL ${sn.sl.toFixed(2)} → TP ${sn.tp.toFixed(2)} · R:R 1:0.5, potřebuje &gt;67% win rate</div></div>`;
+    sniperTxt = `<div class="sig-box ${d.sig}" style="margin-top:6px;opacity:.85;"><div class="sig-title">🎯 Sniper (rychlý)</div><div style="font-size:11px;">SL ${fmtP(sn.sl, d.sym)} → TP ${fmtP(sn.tp, d.sym)} · R:R 1:0.5, potřebuje &gt;67% win rate</div></div>`;
   }
   const adxLbl = d.a1h.adxV !== null ? d.a1h.adxV.toFixed(0) : '–';
   const adxCls = d.a1h.adxV === null ? '' : d.a1h.adxV >= 25 ? 'pos' : d.a1h.adxV < 20 ? 'warn' : '';
@@ -706,7 +718,7 @@ function buildCard(d) {
     </div>
     <div class="ind-row">
       ${d.a1h.rsiV !== null ? `<span class="ind ${d.a1h.rsiV > 60 ? 'pos' : d.a1h.rsiV < 40 ? 'neg' : ''}">RSI ${d.a1h.rsiV.toFixed(0)}</span>` : ''}
-      <span class="ind warn">ATR ${d.atrV.toFixed(2)}</span>
+      <span class="ind warn">ATR ${fmtP(d.atrV, d.sym)}</span>
       <span class="ind ${d.a1h.e20 > d.a1h.e50 ? 'pos' : 'neg'}">EMA ${d.a1h.e20 > d.a1h.e50 ? '▲' : '▼'}</span>
       <span class="ind ${adxCls}" title="Average Directional Index — síla trendu">ADX ${adxLbl}</span>
       <span class="ind ${volCls}" title="Objem vs 20-svíčkový průměr">Vol ${volLbl}</span>
@@ -730,35 +742,45 @@ function toggleSym(el) {
 function loadCalc(sym) {
   const d = lastScan[sym];
   if (!d) return;
-  const isForex = /^(EUR|GBP|USD|JPY|AUD|NZD|CAD|CHF)\/(EUR|GBP|USD|JPY|AUD|NZD|CAD|CHF)$/.test(sym);
+  const isForex = isForexSym(sym);
   const pip = sym.includes('JPY') ? 0.001 : sym.includes('XAU') ? 0.01 : (sym.includes('BTC') || sym.includes('ETH')) ? 1 : isForex ? 0.00001 : 0.01;
   const contract = sym.includes('XAU') ? 100 : (sym.includes('BTC') || sym.includes('ETH')) ? 1 : isForex ? 100000 : 1;
   ID = { pip, contract, name: sym };
-  document.querySelectorAll('#calcPills .pi').forEach(p => p.classList.remove('on'));
-  setDir(d.sig === 'bull' ? 'long' : 'short');
-  document.getElementById('en').value = d.price.toFixed(2);
+  document.querySelectorAll('#calcPills .pi').forEach(p => p.classList.toggle('on', p.dataset.sym === sym));
+  // Data a vstup nastavit PŘED setDir(), aby případný přepočet stopů při změně směru
+  // vycházel z tohoto scanu, ne z dat předchozího instrumentu.
+  document.getElementById('en').value = fmtP(d.price, sym);
   lastCalcData = { candles: d.c1h, price: d.price, atrV: d.atrV, sym: d.sym };
   autoFilled = true;
+  // Neutrální signál směr nemění (dřív se z "neu" stal automaticky Short).
+  if (d.sig !== 'neu') setDir(d.sig === 'bull' ? 'long' : 'short');
   if (d.stops) {
-    document.getElementById('sl2').value = d.stops.sl.toFixed(2);
-    document.getElementById('tp2').value = d.stops.tp.toFixed(2);
+    document.getElementById('sl2').value = fmtP(d.stops.sl, sym);
+    document.getElementById('tp2').value = fmtP(d.stops.tp, sym);
     setStopBasis(`SL dle: ${d.stops.slBasis} · TP dle: ${d.stops.tpBasis}`);
   } else {
     document.getElementById('sl2').value = '';
     document.getElementById('tp2').value = '';
     setStopBasis('');
   }
-  document.getElementById('mATR').textContent = d.atrV.toFixed(2);
+  document.getElementById('mATR').textContent = fmtP(d.atrV, sym);
   document.getElementById('calcSrc').textContent = '← z MTF scanner' + (d.confluent ? '' : ' ⚠️ rámce si neodpovídají');
   calc(); swT('calc');
 }
 
 // ─── CALCULATOR ───────────────────────────────────────────
 async function selI(el, sym, pip, contract) {
-  if (!ensureApiKey()) return;
   document.querySelectorAll('#calcPills .pi').forEach(p => p.classList.remove('on'));
   el.classList.add('on');
   ID = { pip, contract, name: sym };
+  // Bez API klíče se instrument přepne pro ruční výpočet (dřív se nepřepnul vůbec
+  // a kalkulátor dál počítal s kontraktem předchozího instrumentu).
+  if (!API_KEY) {
+    lastCalcData = null; autoFilled = false; setStopBasis('');
+    document.getElementById('calcSrc').textContent = 'ruční zadání (bez API klíče)';
+    calc();
+    return;
+  }
   document.getElementById('calcSrc').textContent = 'načítám cenu…';
   try {
     const candles = await fetchCandles(sym, '1h', 30);
@@ -767,10 +789,10 @@ async function selI(el, sym, pip, contract) {
     lastCalcData = { candles, price, atrV, sym };
     autoFilled = true;
     const stops = computeStops(candles, price, atrV, dir === 'long');
-    document.getElementById('en').value = price.toFixed(2);
-    document.getElementById('sl2').value = stops.sl.toFixed(2);
-    document.getElementById('tp2').value = stops.tp.toFixed(2);
-    document.getElementById('mATR').textContent = atrV.toFixed(2);
+    document.getElementById('en').value = fmtP(price, sym);
+    document.getElementById('sl2').value = fmtP(stops.sl, sym);
+    document.getElementById('tp2').value = fmtP(stops.tp, sym);
+    document.getElementById('mATR').textContent = fmtP(atrV, sym);
     document.getElementById('calcSrc').textContent = '● live cena';
     setStopBasis(`SL dle: ${stops.slBasis} · TP dle: ${stops.tpBasis}`);
   } catch (e) { document.getElementById('calcSrc').textContent = '✗ chyba: ' + e.message; setStopBasis(''); lastCalcData = null; autoFilled = false; }
@@ -789,8 +811,8 @@ function setDir(d) {
     if (autoFilled && lastCalcData && lastCalcData.sym === ID.name) {
       // Nejlepší varianta: přepočet ze skutečné struktury trhu (swing high/low + ATR).
       const stops = computeStops(lastCalcData.candles, lastCalcData.price, lastCalcData.atrV, d === 'long');
-      document.getElementById('sl2').value = stops.sl.toFixed(2);
-      document.getElementById('tp2').value = stops.tp.toFixed(2);
+      document.getElementById('sl2').value = fmtP(stops.sl, ID.name);
+      document.getElementById('tp2').value = fmtP(stops.tp, ID.name);
       setStopBasis(`SL dle: ${stops.slBasis} · TP dle: ${stops.tpBasis}`);
     } else {
       // Záložní varianta, když nejsou k dispozici cachovaná data ze scanu/live ceny:
@@ -802,8 +824,8 @@ function setDir(d) {
       if (en > 0) {
         const slWrongSide = sl > 0 && (d === 'long' ? sl >= en : sl <= en);
         const tpWrongSide = tp > 0 && (d === 'long' ? tp <= en : tp >= en);
-        if (slWrongSide) slEl.value = (2 * en - sl).toFixed(2);
-        if (tpWrongSide) tpEl.value = (2 * en - tp).toFixed(2);
+        if (slWrongSide) slEl.value = fmtP(2 * en - sl, ID.name);
+        if (tpWrongSide) tpEl.value = fmtP(2 * en - tp, ID.name);
         if (slWrongSide || tpWrongSide) clearStopBasis();
       }
     }
@@ -893,7 +915,19 @@ let pendingClose = null;
 function closePos() {
   const { lots, aRisk, pot, rr, name, dir, en, sl, tp } = lastC;
   if (!lots || lots <= 0) { alert('Nejprve vyplň kalkulátor (vstup, SL a zůstatek účtu).'); return; }
-  pendingClose = { lots, aRisk, pot, rr, name, dir, en, sl, tp };
+  openCloseModal({ lots, aRisk, pot, rr, name, dir, en, sl, tp, posId: null });
+}
+// Uzavření SLEDOVANÉ pozice — dřív šlo zapsat do journalu jen aktuální stav
+// kalkulátoru a pozice v seznamu "Pozice" zůstala viset (šla jen smazat ×),
+// takže celková expozice/riziko otevřených pozic nikdy neklesly.
+function closeTrackedPos(id) {
+  const p = positions.find(x => x.id === id);
+  if (!p) return;
+  openCloseModal({ lots: p.lots, aRisk: p.risk, pot: p.profit, rr: p.rr, name: p.name, dir: p.dir, en: p.entry, sl: p.sl, tp: p.tp, posId: id });
+}
+function openCloseModal(data) {
+  pendingClose = data;
+  const { lots, name, dir } = data;
   document.getElementById('closeModalSub').textContent = `${name.replace('/', '')} · ${dir === 'long' ? 'Long' : 'Short'} · ${lots.toFixed(2)} lotů — zadej skutečný zisk/ztrátu v USD.`;
   document.getElementById('closePlInput').value = '';
   document.getElementById('closeErr').classList.remove('on');
@@ -904,15 +938,16 @@ function confirmClose() {
   const raw = document.getElementById('closePlInput').value;
   const plN = parseFloat(raw);
   if (raw === '' || isNaN(plN)) { document.getElementById('closeErr').classList.add('on'); return; }
-  const { lots, aRisk, pot, rr, name, dir, en, sl, tp } = pendingClose;
+  const { lots, aRisk, pot, rr, name, dir, en, sl, tp, posId } = pendingClose;
   journal.push({ id: Date.now(), ts: new Date().toISOString(), name, dir, lots, entry: en, sl, tp, risk: aRisk, profit: pot, rr, pl: plN });
+  if (posId !== null && posId !== undefined) { positions = positions.filter(p => p.id !== posId); renderPos(); }
   save(); renderJnl(); badge(); chkLim();
   closeCloseModal();
   swT('jnl');
 }
 
 function delPos(id) { positions = positions.filter(p => p.id !== id); save(); renderPos(); badge(); }
-function delJnl(id) { journal = journal.filter(j => j.id !== id); save(); renderJnl(); }
+function delJnl(id) { journal = journal.filter(j => j.id !== id); save(); renderJnl(); badge(); chkLim(); }
 
 function renderPos() {
   const em = document.getElementById('emP'), tb = document.getElementById('tbar'), list = document.getElementById('plist');
@@ -925,7 +960,7 @@ function renderPos() {
   list.innerHTML = positions.map(p => `<div class="pc">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <span style="font-size:15px;font-weight:500;color:var(--t1);">${p.name.replace('/', '')}</span>
-      <div style="display:flex;align-items:center;gap:7px;"><span class="badge ${p.dir === 'long' ? 'bL' : 'bS'}">${p.dir === 'long' ? 'Long' : 'Short'}</span><button class="delbtn" onclick="delPos(${p.id})">×</button></div>
+      <div style="display:flex;align-items:center;gap:7px;"><span class="badge ${p.dir === 'long' ? 'bL' : 'bS'}">${p.dir === 'long' ? 'Long' : 'Short'}</span><button class="ref-btn" onclick="closeTrackedPos(${p.id})" title="Uzavřít a zapsat do journalu">Uzavřít</button><button class="delbtn" onclick="delPos(${p.id})" title="Smazat bez zápisu">×</button></div>
     </div>
     <div class="g3">
       <div class="mc"><div class="ml">Loty</div><div class="mv">${p.lots.toFixed(2)}</div></div>
@@ -1012,6 +1047,10 @@ function updExp() {
 }
 
 // ─── EXPORT ───────────────────────────────────────────────
+// jsPDF se standardním fontem (Helvetica) neumí českou diakritiku — "Přehled účtu"
+// se v PDF vykreslilo jako nesmyslné znaky. Bez vloženého fontu je nejspolehlivější
+// diakritiku odstranit.
+function pdfTxt(v) { return String(v).normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
 function expPDF() {
   try {
     const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -1022,8 +1061,8 @@ function expPDF() {
     let y = 36;
     const bal = +document.getElementById('bal').value || 0, rp = +document.getElementById('rp').value || 1;
     const tR = positions.reduce((s, p) => s + p.risk, 0), n = journal.length, wins = journal.filter(j => j.pl > 0).length, totalPL = journal.reduce((s, j) => s + j.pl, 0);
-    doc.setTextColor(40, 40, 40); doc.setFontSize(11); doc.setFont(undefined, 'bold'); doc.text('Přehled účtu', 14, y); y += 8;
-    [['Zůstatek', '$' + bal.toLocaleString()], ['Riziko/obchod', rp + '%'], ['Otevřených pozic', String(positions.length)], ['Celkové riziko', '$' + tR.toFixed(2)], ['Journal', n + ' obchodů'], ['Celkový P&L', (totalPL >= 0 ? '+' : '') + `$${Math.abs(totalPL).toFixed(2)}`], ['Win rate', n ? Math.round(wins / n * 100) + '%' : '–']].forEach(([l, v]) => { doc.setFont(undefined, 'normal'); doc.setTextColor(100, 100, 100); doc.text(l, 14, y); doc.setFont(undefined, 'bold'); doc.setTextColor(40, 40, 40); doc.text(v, 196, y, { align: 'right' }); y += 7; });
+    doc.setTextColor(40, 40, 40); doc.setFontSize(11); doc.setFont(undefined, 'bold'); doc.text(pdfTxt('Přehled účtu'), 14, y); y += 8;
+    [['Zůstatek', '$' + bal.toLocaleString()], ['Riziko/obchod', rp + '%'], ['Otevřených pozic', String(positions.length)], ['Celkové riziko', '$' + tR.toFixed(2)], ['Journal', n + ' obchodů'], ['Celkový P&L', (totalPL >= 0 ? '+' : '') + `$${Math.abs(totalPL).toFixed(2)}`], ['Win rate', n ? Math.round(wins / n * 100) + '%' : '–']].forEach(([l, v]) => { doc.setFont(undefined, 'normal'); doc.setTextColor(100, 100, 100); doc.text(pdfTxt(l), 14, y); doc.setFont(undefined, 'bold'); doc.setTextColor(40, 40, 40); doc.text(pdfTxt(v), 196, y, { align: 'right' }); y += 7; });
     if (journal.length) {
       y += 5; doc.setFillColor(29, 158, 117); doc.rect(14, y - 5, 182, 7, 'F');
       doc.setTextColor(255, 255, 255); doc.setFont(undefined, 'bold'); doc.setFontSize(9); doc.text('Trading Journal', 16, y); y += 8;
@@ -1037,7 +1076,7 @@ function expPDF() {
         doc.setTextColor(80, 80, 80); doc.text(new Date(j.ts).toLocaleDateString('cs-CZ'), 172, y); y += 7;
       });
     }
-    doc.setFontSize(7); doc.setTextColor(180, 180, 180); doc.text('Pouze informativní účely | ' + now, 14, 287);
+    doc.setFontSize(7); doc.setTextColor(180, 180, 180); doc.text(pdfTxt('Pouze informativní účely | ' + now), 14, 287);
     doc.save('mtf-report-' + new Date().toISOString().slice(0, 10) + '.pdf');
   } catch (e) { alert('Chyba při generování PDF: ' + e.message); }
 }
@@ -1046,7 +1085,10 @@ function expCSV() {
   const esc = v => `"${String(v).replace(/"/g, '""')}"`;
   let csv = 'sep=,\nMTF Trading Report\n\n=== JOURNAL ===\nDatum,Symbol,Směr,Loty,Vstup,SL,TP,P&L,RR\n';
   journal.forEach(j => { csv += `${esc(new Date(j.ts).toLocaleDateString('cs-CZ'))},${esc(j.name)},${esc(j.dir)},${esc(j.lots)},${esc(j.entry)},${esc(j.sl || '')},${esc(j.tp || '')},${esc(j.pl.toFixed(2))},${esc((j.rr || 0).toFixed(2))}\n`; });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })); a.download = 'mtf-report.csv'; a.click();
+  const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }));
+  const a = document.createElement('a'); a.href = url; a.download = 'mtf-report.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 // ─── STORAGE (localStorage pro standalone app) ─────────────
