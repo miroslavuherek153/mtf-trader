@@ -212,6 +212,7 @@ display:flex;background:var(--bg1);flex-shrink:0;
 <button class="pi" data-sym="GBP/USD" onclick="toggleSym(this)">GBPUSD</button>
 <button class="pi" data-sym="AAPL" onclick="toggleSym(this)">AAPL</button>
 </div>
+<div class="sym-card" id="goldCard" style="cursor:default;"><div class="sl">Zlato · XAU/USD</div><div style="font-size:12px;color:var(--t2);">Načítám…</div></div>
 <div class="log-box" id="logBox">Připraven. Stiskni ↻ Načíst data.
 </div>
 <div id="scanCards"></div>
@@ -656,6 +657,7 @@ const API_DELAY = 8000;
 
 async function startScan() {
   if (scanning) return;
+  loadGold(); // karta Zlato se obnoví i bez API klíče
   if (!ensureApiKey()) return;
   scanning = true;
   const prevScan = { ...lastScan }; // pro porovnání skóre s minulým scanem
@@ -1362,6 +1364,69 @@ function loadLastScanFromStorage() {
     log(`Zobrazeny uložené výsledky (${ageTxt}). Klikni ↻ pro aktuální data.`, 'warn');
   } catch (e) { /* poškozená uložená data — appka prostě otevře prázdný scanner */ }
 }
+// ─── ZLATO (automatická data z xauusd-app-2) ──────────────
+// data.json skládá GitHub Actions v repozitáři xauusd-app-2 (spot XAU/USD z Twelve Data,
+// ve všední dny). Veřejný soubor — žádný klíč, nespotřebuje limit Twelve Data v appce.
+const GOLD_URL = 'https://raw.githubusercontent.com/miroslavuherek153/xauusd-app-2/main/data.json';
+async function loadGold() {
+  const box = document.getElementById('goldCard');
+  if (!box) return;
+  try {
+    const res = await fetch(GOLD_URL + '?t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    localStorage.setItem('mtf_gold_last', JSON.stringify(d));
+    renderGold(d, false);
+  } catch (e) {
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem('mtf_gold_last') || 'null'); } catch (_) { d = null; }
+    if (d) renderGold(d, true);
+    else box.innerHTML = `<div class="sl">Zlato</div><div style="font-size:12px;color:var(--t2);">Data nejdou načíst (${escHtml(e.message)}).</div>`;
+  }
+}
+function renderGold(d, offline) {
+  const box = document.getElementById('goldCard');
+  if (d.status !== 'ok') {
+    box.innerHTML = `<div class="sl">Zlato · XAU/USD</div><div style="font-size:12px;color:var(--r);">${escHtml(d.error || 'Data nejsou k dispozici')} · ${escHtml(d.updated || '')}</div>`;
+    return;
+  }
+  const tf = d.tf || {};
+  const tfBox = k => {
+    const t = tf[k] || 'neutral';
+    const cls = t === 'bullish' ? 'bull' : t === 'bearish' ? 'bear' : 'neu';
+    return `<div class="tf-b ${cls}"><span class="tf-lbl">${k}</span><span class="tf-val">${t === 'bullish' ? '▲' : t === 'bearish' ? '▼' : '→'}</span></div>`;
+  };
+  const lean = d.signal === 'BUY' ? 'převážně býčí' : d.signal === 'SELL' ? 'převážně medvědí' : 'smíšené';
+  box.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+      <div><div class="sym-name">Zlato · XAU/USD</div><div style="font-size:10px;color:var(--t2);">${escHtml(d.source || '')} · ${escHtml(d.updated || '')}${offline ? ' · offline' : ''}</div></div>
+      <div class="sym-price">$${(+d.price).toFixed(2)}</div>
+    </div>
+    <div class="tf-row">${tfBox('1H')}${tfBox('4H')}${tfBox('1D')}</div>
+    <div class="ind-row">
+      <span class="ind">RSI ${(+d.rsi).toFixed(0)}</span><span class="ind warn">ATR ${(+d.atr).toFixed(2)}</span>
+      <span class="ind ${d.price > d.ema50 ? 'pos' : 'neg'}">EMA50 ${(+d.ema50).toFixed(0)}</span>
+      <span class="ind">S ${escHtml((d.support || []).slice(0, 2).join(' / '))}</span><span class="ind">R ${escHtml((d.resistance || []).slice(0, 2).join(' / '))}</span>
+    </div>
+    <div style="font-size:11px;color:var(--t2);line-height:1.5;">Indikátory ${lean} — kontext trhu, ne obchodní signál. <a href="#" onclick="useGoldInCalc();return false;" style="color:var(--g);">Cena do kalkulátoru →</a></div>`;
+}
+function useGoldInCalc() {
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem('mtf_gold_last') || 'null'); } catch (_) { d = null; }
+  if (!d || !d.price) return;
+  const pill = document.querySelector('#calcPills .pi[data-sym="XAU/USD"]');
+  document.querySelectorAll('#calcPills .pi').forEach(p => p.classList.toggle('on', p === pill));
+  ID = { pip: 0.01, contract: 100, name: 'XAU/USD' };
+  selReq++;
+  lastCalcData = null; autoFilled = false;
+  document.getElementById('en').value = (+d.price).toFixed(2);
+  document.getElementById('mATR').textContent = (+d.atr).toFixed(2);
+  document.getElementById('calcSrc').textContent = '← cena z karty Zlato (' + (d.updated || '') + ')';
+  setStopBasis('');
+  calc(); swT('calc');
+}
+loadGold();
+
 loadLastScanFromStorage();
 
 if (!API_KEY) setApiSt('○ chybí klíč', 'var(--r)');

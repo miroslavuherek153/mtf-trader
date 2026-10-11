@@ -4,7 +4,7 @@
 // Ostatní statické soubory (manifest, ikony appky): cache-first
 // api.twelvedata.com: vždy síť, nikdy se necachuje (živá tržní data)
 
-const CACHE_NAME = 'mtf-trader-v5';
+const CACHE_NAME = 'mtf-trader-v6';
 
 const STATIC_ASSETS = [
   './index.html',
@@ -49,7 +49,7 @@ self.addEventListener('fetch', (event) => {
   if (!url.startsWith('http')) return;
 
   // api.github.com = stav robotů (soukromý repozitář) — vždy čerstvý, nikdy z cache
-  const isApi = url.includes('api.twelvedata.com') || url.includes('api.github.com');
+  const isApi = url.includes('api.twelvedata.com') || url.includes('api.github.com') || url.includes('raw.githubusercontent.com');
   const isCdn = url.includes('cdnjs.cloudflare.com') || url.includes('cdn.jsdelivr.net');
 
   // Živá tržní data — vždy síť, nikdy se necachují. Offline vrátíme srozumitelnou JSON chybu
