@@ -312,7 +312,14 @@ display:flex;background:var(--bg1);flex-shrink:0;
 <div class="erow"><span style="color:var(--t2);">Vygenerováno</span><span style="font-size:11px;color:var(--t2);" id="xDt">–</span></div>
 </div>
 <button class="bp" onclick="expPDF()"><i class="ti ti-file-type-pdf" style="font-size:15px;vertical-align:-2px;margin-right:5px;"></i>Exportovat PDF report</button>
-<button class="bs" onclick="expCSV()"><i class="ti ti-table-export" style="font-size:15px;vertical-align:-2px;margin-right:5px;"></i>Exportovat CSV přehled</button>
+<button class="bs" onclick="expCSV()"><i class="ti ti-table-export" style="font-size:15px;vertical-align:-2px;margin-right:5px;"></i>Exportovat CSV (Excel)</button>
+<div class="card" style="margin-top:2px;">
+<div class="sl">Záloha dat</div>
+<div style="font-size:11px;color:var(--t2);margin-bottom:8px;line-height:1.5;">Pozice a journal jsou uložené jen v tomhle zařízení. Zálohu si občas ulož (např. do Google Disku) — po ztrátě telefonu nebo vymazání dat prohlížeče ji tady obnovíš.</div>
+<button class="bs" onclick="backupJSON()"><i class="ti ti-cloud-download" style="font-size:15px;vertical-align:-2px;margin-right:5px;"></i>Uložit zálohu (JSON)</button>
+<button class="bs" style="margin-bottom:0;" onclick="document.getElementById('restoreInput').click()"><i class="ti ti-cloud-upload" style="font-size:15px;vertical-align:-2px;margin-right:5px;"></i>Obnovit ze zálohy</button>
+<input type="file" id="restoreInput" accept=".json,application/json" style="display:none;" onchange="restoreJSON(this)">
+</div>
 <div class="tip-box">
 <div class="sl" style="margin-bottom:6px;">Pravidla risk managementu</div>
 <div class="tip-row"><i class="ti ti-check"></i>Vždy nastav SL před otevřením pozice</div>
@@ -445,7 +452,7 @@ async function fetchCandles(symbol, interval, outputsize = 55) {
     if (e.name === 'AbortError') throw new Error('Vypršel časový limit požadavku (12s).');
     throw new Error('Síťová chyba — zkontroluj připojení.');
   } finally { clearTimeout(to); }
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) throw new Error(res.status === 429 ? 'HTTP 429 — překročen limit API' : `HTTP ${res.status}`);
   const data = await res.json();
   if (data.status === 'error') throw new Error(data.message || 'API error');
   if (!data.values || !data.values.length) throw new Error('Žádná data pro ' + symbol);
@@ -632,9 +639,12 @@ async function startScan() {
   document.getElementById('scanCards').innerHTML = '';
   document.getElementById('logBox').innerHTML = '';
   setApiSt('● FETCH', 'var(--a)');
-  log('Spouštím scan pro ' + activeSyms.length + ' instrumentů (1H + 4H + 1D)…');
+  // Kopie seznamu: přepnutí instrumentu během scanu (8s prodlevy) dřív měnilo
+  // rozběhnutou smyčku (přidaný symbol se načetl uprostřed, poslední prodleva se počítala špatně).
+  const syms = [...activeSyms];
+  log('Spouštím scan pro ' + syms.length + ' instrumentů (1H + 4H + 1D)…');
   log('Sekvenční volání — 8s prodleva mezi každým (rate limit 8 volání/min free plánu)', 'warn');
-  for (const sym of activeSyms) {
+  for (const sym of syms) {
     const short = sym.replace('/', '');
     const ph = document.createElement('div');
     ph.className = 'load-card'; ph.id = 'lc-' + short;
@@ -669,9 +679,9 @@ async function startScan() {
     } catch (e) {
       log(`${short}: ✗ ${e.message}`, 'err');
       const card = document.getElementById('lc-' + short);
-      if (card) card.outerHTML = `<div class="err-card"><div class="err-title">✗ ${short} — chyba</div><div>${escHtml(e.message)}</div>${/rate|limit/i.test(e.message) ? '<div style="margin-top:4px;">⚠️ Rate limit — počkej minutu.</div>' : ''}</div>`;
+      if (card) card.outerHTML = `<div class="err-card"><div class="err-title">✗ ${short} — chyba</div><div>${escHtml(e.message)}</div>${/rate|limit|429|credits/i.test(e.message) ? '<div style="margin-top:4px;">⚠️ Limit API (8 volání/min, 800/den) — počkej minutu.</div>' : ''}</div>`;
     }
-    if (sym !== activeSyms[activeSyms.length - 1]) await delay(API_DELAY);
+    if (sym !== syms[syms.length - 1]) await delay(API_DELAY);
   }
   setApiSt('● LIVE', 'var(--g)');
   log('Scan dokončen.', 'ok');
@@ -747,6 +757,7 @@ function loadCalc(sym) {
   const pip = sym.includes('JPY') ? 0.001 : sym.includes('XAU') ? 0.01 : (sym.includes('BTC') || sym.includes('ETH')) ? 1 : isForex ? 0.00001 : 0.01;
   const contract = sym.includes('XAU') ? 100 : (sym.includes('BTC') || sym.includes('ETH')) ? 1 : isForex ? 100000 : 1;
   ID = { pip, contract, name: sym };
+  selReq++; // případná rozběhnutá živá cena z kalkulátoru už nesmí přepsat data ze scanu
   document.querySelectorAll('#calcPills .pi').forEach(p => p.classList.toggle('on', p.dataset.sym === sym));
   // Data a vstup nastavit PŘED setDir(), aby případný přepočet stopů při změně směru
   // vycházel z tohoto scanu, ne z dat předchozího instrumentu.
@@ -770,10 +781,15 @@ function loadCalc(sym) {
 }
 
 // ─── CALCULATOR ───────────────────────────────────────────
+// Pořadové číslo požadavku na živou cenu: při rychlém přepínání instrumentů mohla
+// starší odpověď doběhnout později a přepsat vstup/SL cenou JINÉHO instrumentu,
+// zatímco kalkulátor už počítal s kontraktem nového (např. cena BTC s kontraktem zlata).
+let selReq = 0;
 async function selI(el, sym, pip, contract) {
   document.querySelectorAll('#calcPills .pi').forEach(p => p.classList.remove('on'));
   el.classList.add('on');
   ID = { pip, contract, name: sym };
+  const req = ++selReq;
   // Bez API klíče se instrument přepne pro ruční výpočet (dřív se nepřepnul vůbec
   // a kalkulátor dál počítal s kontraktem předchozího instrumentu).
   if (!API_KEY) {
@@ -785,6 +801,7 @@ async function selI(el, sym, pip, contract) {
   document.getElementById('calcSrc').textContent = 'načítám cenu…';
   try {
     const candles = await fetchCandles(sym, '1h', 30);
+    if (req !== selReq || ID.name !== sym) return; // mezitím vybrán jiný instrument
     const price = parseFloat(candles[candles.length - 1].close);
     const atrV = atr(candles, Math.min(14, candles.length - 1));
     lastCalcData = { candles, price, atrV, sym };
@@ -796,7 +813,10 @@ async function selI(el, sym, pip, contract) {
     document.getElementById('mATR').textContent = fmtP(atrV, sym);
     document.getElementById('calcSrc').textContent = '● live cena';
     setStopBasis(`SL dle: ${stops.slBasis} · TP dle: ${stops.tpBasis}`);
-  } catch (e) { document.getElementById('calcSrc').textContent = '✗ chyba: ' + e.message; setStopBasis(''); lastCalcData = null; autoFilled = false; }
+  } catch (e) {
+    if (req !== selReq) return;
+    document.getElementById('calcSrc').textContent = '✗ chyba: ' + e.message; setStopBasis(''); lastCalcData = null; autoFilled = false;
+  }
   calc();
 }
 
@@ -850,19 +870,25 @@ function calc() {
   // Velikost pozice: zaokrouhlí se dolů na krok lotu (0.01). Pokud vyjde méně než
   // minimální lot, použije se minimální lot a ukáže se jeho skutečné riziko + varování.
   const LOT_STEP = 0.01, MIN_LOT = 0.01;
-  const rawLots = slD > 0 ? riskAmt / (slD * contract) : 0;
+  // Oprava: bez vstupní ceny nebo se SL na špatné straně se dřív stejně spočítala
+  // velikost (např. z |0 - SL|) a šla uložit jako pozice. Teď se velikost počítá
+  // jen z platného zadání.
+  const slOk = dir === 'long' ? sl < en : sl > en;
+  const inputOk = en > 0 && sl > 0 && slD > 0 && slOk;
+  const rawLots = inputOk ? riskAmt / (slD * contract) : 0;
   let lr = Math.floor(rawLots / LOT_STEP + 1e-9) * LOT_STEP;
-  const minLotForced = slD > 0 && bal > 0 && lr < MIN_LOT;
+  const minLotForced = inputOk && bal > 0 && lr < MIN_LOT;
   if (minLotForced) lr = MIN_LOT;
   lr = Math.round(lr * 1000) / 1000;
 
+  const tpOk = !tp || (dir === 'long' ? tp > en : tp < en);
   const aRisk = lr * slD * contract;
-  const pot = tpD > 0 ? lr * tpD * contract : 0;
-  const rr = tpD > 0 && slD > 0 ? tpD / slD : 0;
+  const pot = tpD > 0 && tpOk ? lr * tpD * contract : 0;
+  const rr = tpD > 0 && slD > 0 && tpOk ? tpD / slD : 0;
   const posVal = lr * en * contract;
 
-  const slOk = dir === 'long' ? sl < en : sl > en;
-  const tpOk = !tp || (dir === 'long' ? tp > en : tp < en);
+  // Celkové riziko otevřených pozic + tahle nová (pravidlo z Exportu: pod 6 % účtu)
+  const openRisk = positions.reduce((s, p) => s + (p.risk || 0), 0);
 
   const w = [];
   if (en <= 0) w.push('Vyplň vstupní cenu.');
@@ -873,6 +899,7 @@ function calc() {
   if (rp > 2) w.push('Riziko ' + rp + '% překračuje doporučenou hranici 2%.');
   if (rr > 0 && rr < 1) w.push('R:R 1:' + f(rr) + ' je pod doporučenou hodnotou 1:1.');
   if (minLotForced) w.push('SL je na tento účet příliš široký: min. lot ' + MIN_LOT + ' znamená riziko $' + f(aRisk) + ' (' + f(aRisk / bal * 100, 2) + '% účtu) místo nastavených ' + rp + '%.');
+  if (lr > 0 && bal > 0 && (openRisk + aRisk) / bal * 100 > 6) w.push('S touto pozicí by celkové riziko otevřených pozic bylo ' + f((openRisk + aRisk) / bal * 100, 1) + ' % účtu (doporučeno pod 6 %).');
 
   const wn = document.getElementById('wn');
   wn.textContent = w.join(' '); wn.className = 'wn' + (w.length ? ' on' : '');
@@ -893,12 +920,17 @@ function calc() {
   chkLim();
 }
 
-function chkLim() {
+function dailyLoss() {
   const bal = Math.max(0, +document.getElementById('bal').value || 0);
   const dlim = Math.max(0.1, +document.getElementById('dlim').value || 3);
   const today = new Date().toDateString();
   const loss = journal.filter(j => new Date(j.ts).toDateString() === today && j.pl < 0).reduce((s, j) => s + Math.abs(j.pl), 0);
-  const limit = bal * dlim / 100;
+  return { loss, limit: bal * dlim / 100 };
+}
+function dailyLimitHit() { const { loss, limit } = dailyLoss(); return limit > 0 && loss >= limit; }
+
+function chkLim() {
+  const { loss, limit } = dailyLoss();
   const ab = document.getElementById('alertBox');
   if (limit > 0 && loss >= limit) { ab.className = 'alert-box on'; ab.textContent = '⚠️ Denní limit ztráty dosažen! Ztráta dnes: $' + loss.toFixed(2) + ' / limit $' + limit.toFixed(2) + '. Přestaň obchodovat.'; }
   else ab.className = 'alert-box';
@@ -908,6 +940,8 @@ function chkLim() {
 function addPos() {
   const { lots, aRisk, pot, rr, name, dir, en, sl, tp } = lastC;
   if (!lots || lots <= 0) { alert('Nejprve správně vyplň kalkulátor (vstup, SL a zůstatek účtu).'); return; }
+  // Denní limit ztráty dřív jen svítil v kalkulátoru — přidání pozice nic nezastavilo.
+  if (dailyLimitHit() && !confirm('Denní limit ztráty je dosažený. Opravdu přidat další pozici?')) return;
   positions.push({ id: Date.now(), name, dir, lots, entry: en, sl, tp, risk: aRisk, profit: pot, rr });
   save(); renderPos(); badge(); swT('pos');
 }
@@ -947,8 +981,15 @@ function confirmClose() {
   swT('jnl');
 }
 
-function delPos(id) { positions = positions.filter(p => p.id !== id); save(); renderPos(); badge(); }
-function delJnl(id) { journal = journal.filter(j => j.id !== id); save(); renderJnl(); badge(); chkLim(); }
+// Mazání je nevratné (data jsou jen v telefonu) — dřív stačilo omylem ťuknout na ×.
+function delPos(id) {
+  if (!confirm('Smazat pozici bez zápisu do journalu?')) return;
+  positions = positions.filter(p => p.id !== id); save(); renderPos(); badge();
+}
+function delJnl(id) {
+  if (!confirm('Smazat obchod z journalu? Nejde to vrátit.')) return;
+  journal = journal.filter(j => j.id !== id); save(); renderJnl(); badge(); chkLim();
+}
 
 function renderPos() {
   const em = document.getElementById('emP'), tb = document.getElementById('tbar'), list = document.getElementById('plist');
@@ -1082,20 +1123,79 @@ function expPDF() {
   } catch (e) { alert('Chyba při generování PDF: ' + e.message); }
 }
 
+// CSV pro český Excel: oddělovač středník, desetinná čárka, BOM pro UTF-8.
+// Dřív: řádek "sep=," vypnul v Excelu detekci UTF-8 (rozbitá diakritika) a čísla
+// s desetinnou tečkou bral český Excel jako text/datum.
 function expCSV() {
   const esc = v => `"${String(v).replace(/"/g, '""')}"`;
-  let csv = 'sep=,\nMTF Trading Report\n\n=== JOURNAL ===\nDatum,Symbol,Směr,Loty,Vstup,SL,TP,P&L,RR\n';
-  journal.forEach(j => { csv += `${esc(new Date(j.ts).toLocaleDateString('cs-CZ'))},${esc(j.name)},${esc(j.dir)},${esc(j.lots)},${esc(j.entry)},${esc(j.sl || '')},${esc(j.tp || '')},${esc(j.pl.toFixed(2))},${esc((j.rr || 0).toFixed(2))}\n`; });
-  const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }));
-  const a = document.createElement('a'); a.href = url; a.download = 'mtf-report.csv';
+  const num = (v, d) => (v === '' || v === null || v === undefined || !isFinite(+v)) ? '' : (+v).toFixed(d).replace('.', ',');
+  const row = cells => cells.join(';') + '\r\n';
+  let csv = row(['Datum', 'Symbol', 'Směr', 'Loty', 'Vstup', 'SL', 'TP', 'Riziko $', 'P&L $', 'Plán R:R', 'Reálné R'].map(esc));
+  journal.forEach(j => {
+    const dec = priceDec(j.name);
+    csv += row([
+      esc(new Date(j.ts).toLocaleDateString('cs-CZ')), esc(j.name), esc(j.dir === 'long' ? 'Long' : 'Short'),
+      num(j.lots, 2), num(j.entry, dec), num(j.sl || '', dec), num(j.tp || '', dec),
+      num(j.risk, 2), num(j.pl, 2), num(j.rr || 0, 2), j.risk > 0 ? num(j.pl / j.risk, 2) : ''
+    ]);
+  });
+  downloadFile('\uFEFF' + csv, 'mtf-journal-' + new Date().toISOString().slice(0, 10) + '.csv', 'text/csv;charset=utf-8;');
+}
+
+function downloadFile(content, name, type) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const a = document.createElement('a'); a.href = url; a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ─── ZÁLOHA / OBNOVA ──────────────────────────────────────
+// Pozice a journal jsou jen v localStorage tohoto telefonu — ztráta telefonu, vymazání
+// dat prohlížeče nebo přeinstalace = ztráta celého journalu. JSON záloha jde obnovit.
+function backupJSON() {
+  const data = { app: 'mtf-trader', version: 1, ts: new Date().toISOString(), positions, journal,
+    settings: { bal: document.getElementById('bal').value, rp: document.getElementById('rp').value, dlim: document.getElementById('dlim').value } };
+  downloadFile(JSON.stringify(data, null, 1), 'mtf-zaloha-' + new Date().toISOString().slice(0, 10) + '.json', 'application/json');
+}
+function restoreJSON(input) {
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const d = JSON.parse(reader.result);
+      if (!d || d.app !== 'mtf-trader' || !Array.isArray(d.positions) || !Array.isArray(d.journal)) throw new Error('Soubor není záloha MTF Trader.');
+      if (!confirm(`Obnovit zálohu z ${new Date(d.ts).toLocaleString('cs-CZ')}?\n${d.positions.length} pozic, ${d.journal.length} obchodů v journalu.\nSoučasná data se nahradí.`)) return;
+      positions = d.positions; journal = d.journal;
+      if (d.settings) {
+        ['bal', 'rp', 'dlim'].forEach(k => { if (d.settings[k] !== undefined) document.getElementById(k).value = d.settings[k]; });
+        saveSettings();
+      }
+      save(); renderPos(); renderJnl(); badge(); calc(); updExp();
+      alert('Záloha obnovena.');
+    } catch (e) { alert('Obnova selhala: ' + e.message); }
+  };
+  reader.readAsText(file);
 }
 
 // ─── STORAGE (localStorage pro standalone app) ─────────────
 function save() {
   try { localStorage.setItem('mtf_pos', JSON.stringify(positions)); localStorage.setItem('mtf_jnl', JSON.stringify(journal)); }
   catch (e) { log('Uložení selhalo: ' + e.message, 'err'); }
+}
+// Nastavení účtu (zůstatek, riziko, denní limit) se dřív neukládalo: po každém otevření
+// appky byl zůstatek zase 1000 $ a velikost pozice i denní limit se počítaly z něj.
+function saveSettings() {
+  try { localStorage.setItem('mtf_settings', JSON.stringify({ bal: document.getElementById('bal').value, rp: document.getElementById('rp').value, dlim: document.getElementById('dlim').value })); }
+  catch (e) { /* localStorage nedostupný */ }
+}
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem('mtf_settings') || 'null');
+    if (s) ['bal', 'rp', 'dlim'].forEach(k => { if (s[k] !== undefined && s[k] !== '') document.getElementById(k).value = s[k]; });
+  } catch (e) { /* poškozené nastavení — zůstanou výchozí hodnoty */ }
+  ['bal', 'rp', 'dlim'].forEach(k => document.getElementById(k).addEventListener('change', saveSettings));
 }
 function loadData() {
   try {
@@ -1104,6 +1204,7 @@ function loadData() {
   } catch (e) { log('Načtení uložených dat selhalo, data mohla být poškozená.', 'err'); }
   renderPos(); badge(); chkLim();
 }
+loadSettings();
 loadData();
 
 // Poslední výsledek scanu se ukládá lokálně, ať appka po zavření/znovuotevření
