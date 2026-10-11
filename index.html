@@ -482,7 +482,11 @@ async function fetchCandles(symbol, interval, outputsize = 55) {
   const data = await res.json();
   if (data.status === 'error') throw new Error(data.message || 'API error');
   if (!data.values || !data.values.length) throw new Error('Žádná data pro ' + symbol);
-  return data.values.reverse();
+  // Svíčky se zavřeným trhem (víkend, svátky) jsou ploché (high == low): stahovaly ATR k nule,
+  // takže doporučený SL/TP vycházel o víkendu nesmyslně těsný. Poslední svíčka zůstává vždy (aktuální cena).
+  const vals = data.values.reverse();
+  const live = vals.filter((c, i) => i === vals.length - 1 || parseFloat(c.high) > parseFloat(c.low));
+  return live.length >= 10 ? live : vals;
 }
 
 // ─── FORMÁTOVÁNÍ CEN ──────────────────────────────────────
@@ -1400,7 +1404,7 @@ function renderGold(d, offline) {
   box.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
       <div><div class="sym-name">Zlato · XAU/USD</div><div style="font-size:10px;color:var(--t2);">${escHtml(d.source || '')} · ${escHtml(d.updated || '')}${offline ? ' · offline' : ''}</div></div>
-      <div class="sym-price">$${(+d.price).toFixed(2)}</div>
+      <div class="sym-price" style="color:var(--t1);">$${(+d.price).toFixed(2)}</div>
     </div>
     <div class="tf-row">${tfBox('1H')}${tfBox('4H')}${tfBox('1D')}</div>
     <div class="ind-row">
