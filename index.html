@@ -217,6 +217,15 @@ display:flex;background:var(--bg1);flex-shrink:0;
 <div id="scanCards"></div>
 </div>
 
+<!-- ─── ROBOTI ─── -->
+<div class="tp" id="tp-bot">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+<div class="sl" style="margin:0;" id="botSt">–</div>
+<div style="display:flex;gap:6px;"><button class="ref-btn" onclick="loadBots()">↻ Načíst</button><button class="ref-btn" onclick="openBotModal()" title="Zdroj dat">⚙</button></div>
+</div>
+<div id="botCards"></div>
+</div>
+
 <!-- ─── KALKULÁTOR ─── -->
 <div class="tp" id="tp-calc">
 <div class="alert-box" id="alertBox"></div>
@@ -335,10 +344,26 @@ display:flex;background:var(--bg1);flex-shrink:0;
 <!-- Bottom nav -->
 <div class="nav">
 <button class="nb on" id="nb-scan" onclick="swT('scan')"><i class="ti ti-radar"></i><span>Scanner</span></button>
+<button class="nb" id="nb-bot" onclick="swT('bot')"><i class="ti ti-robot"></i><span>Roboti</span></button>
 <button class="nb" id="nb-calc" onclick="swT('calc')"><i class="ti ti-calculator"></i><span>Kalkulátor</span></button>
 <button class="nb" id="nb-pos" onclick="swT('pos')"><i class="ti ti-list-check"></i><span>Pozice</span><span class="bdg" id="bP"></span></button>
 <button class="nb" id="nb-jnl" onclick="swT('jnl')"><i class="ti ti-notebook"></i><span>Journal</span><span class="bdg" id="bJ"></span></button>
 <button class="nb" id="nb-exp" onclick="swT('exp')"><i class="ti ti-download"></i><span>Export</span></button>
+</div>
+
+<!-- Modal: zdroj dat robotů -->
+<div class="modal-bg" id="botModalBg">
+<div class="modal-box">
+<div class="modal-title">Zdroj dat robotů</div>
+<div class="modal-sub">Soukromý GitHub repozitář se souborem status.json (zapisuje ho skript cockpit_main.py na PC). Token stačí jen pro čtení obsahu tohoto repozitáře; ukládá se jen v tomto zařízení.</div>
+<div class="fi"><input type="text" id="botRepo" placeholder="uzivatel/trading-cockpit-data" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+<div class="fi"><input type="password" id="botToken" placeholder="github_pat_… (jen čtení)" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+<div class="modal-err" id="botErr">Zadej repozitář ve tvaru uzivatel/nazev a platný token.</div>
+<div class="modal-row">
+<button class="bs" style="flex:1;" onclick="closeBotModal()">Zrušit</button>
+<button class="bp" style="flex:1;" onclick="saveBotCfg()">Uložit</button>
+</div>
+</div>
 </div>
 
 <!-- Modal: API klíč -->
@@ -1068,10 +1093,113 @@ function renderJnl() {
     </div></div>`).join('');
 }
 
+// ─── ROBOTI (Trading Cockpit) ─────────────────────────────
+// Stav demo robotů MT5 a opcí IBKR. Soubor status.json skládá skript cockpit_main.py na PC
+// (každých 15 min) a nahrává ho do SOUKROMÉHO GitHub repozitáře. Appka ho jen čte tokenem,
+// který je uložený pouze v tomto zařízení (stačí token s právem jen ke čtení obsahu toho repozitáře).
+let botCfg = { repo: '', token: '' };
+try { botCfg = JSON.parse(localStorage.getItem('mtf_bot_cfg') || '{"repo":"","token":""}'); } catch (e) { /* výchozí prázdné */ }
+let botData = null;
+try { botData = JSON.parse(localStorage.getItem('mtf_bot_last') || 'null'); } catch (e) { botData = null; }
+
+function openBotModal() {
+  document.getElementById('botRepo').value = botCfg.repo || '';
+  document.getElementById('botToken').value = botCfg.token || '';
+  document.getElementById('botErr').classList.remove('on');
+  document.getElementById('botModalBg').classList.add('on');
+}
+function closeBotModal() { document.getElementById('botModalBg').classList.remove('on'); }
+function saveBotCfg() {
+  const repo = document.getElementById('botRepo').value.trim().replace(/^https?:\/\/github\.com\//, '').replace(/\/$/, '');
+  const token = document.getElementById('botToken').value.trim();
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repo) || token.length < 20) { document.getElementById('botErr').classList.add('on'); return; }
+  botCfg = { repo, token };
+  localStorage.setItem('mtf_bot_cfg', JSON.stringify(botCfg));
+  closeBotModal();
+  loadBots();
+}
+
+async function loadBots() {
+  const st = document.getElementById('botSt');
+  if (!botCfg.repo || !botCfg.token) { st.textContent = 'Nastav zdroj dat (⚙).'; renderBots(); return; }
+  st.textContent = 'Načítám…';
+  try {
+    const res = await fetch(`https://api.github.com/repos/${botCfg.repo}/contents/status.json?t=${Date.now()}`, {
+      headers: { Authorization: 'Bearer ' + botCfg.token, Accept: 'application/vnd.github.raw+json' }, cache: 'no-store' });
+    if (res.status === 401 || res.status === 403) throw new Error('token neplatí nebo nemá přístup (HTTP ' + res.status + ')');
+    if (res.status === 404) throw new Error('status.json v repozitáři ' + botCfg.repo + ' nenalezen');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    botData = await res.json();
+    localStorage.setItem('mtf_bot_last', JSON.stringify(botData));
+    st.textContent = 'Načteno ' + new Date().toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' });
+  } catch (e) {
+    st.textContent = '✗ ' + e.message + (botData ? ' — zobrazuji poslední uložená data' : '');
+  }
+  renderBots();
+}
+
+function ageMinutes(gen) {
+  const t = new Date(String(gen || '').replace(' ', 'T'));
+  return isNaN(t) ? null : Math.round((Date.now() - t.getTime()) / 60000);
+}
+
+function renderBots() {
+  const box = document.getElementById('botCards');
+  const d = botData;
+  if (!d) {
+    box.innerHTML = `<div class="em"><i class="ti ti-robot"></i><p>Zatím žádná data.<br>Klikni na ⚙ a zadej soukromý repozitář a token.</p></div>`;
+    return;
+  }
+  const age = ageMinutes(d.generated);
+  const stale = age !== null && age > 40;
+  const fmt = v => (v === null || v === undefined || v === '') ? '–' : (+v).toLocaleString('cs-CZ', { maximumFractionDigits: 2 });
+  const sgn = v => (v > 0 ? '+' : '') + fmt(v);
+  let h = '';
+  if (stale) h += `<div class="alert-box on">⚠️ Data jsou ${age} min stará — skript na PC neběží, PC je vypnuté nebo nemá internet.</div>`;
+  if (!d.mt5_ok) h += `<div class="alert-box on">⚠️ Při posledním běhu nebyl dostupný terminál MT5.</div>`;
+  const a = d.account || {};
+  const riskCls = a.open_risk_pct > 6 ? 'neg-c' : a.open_risk_pct > 3 ? 'warn-c' : '';
+  h += `<div class="card"><div class="sl">Účet MT5 ${a.demo ? '(DEMO)' : ''} · ${escHtml(a.login || '')} · ${escHtml(d.generated || '')}</div>
+    <div class="g3">
+      <div class="mc"><div class="ml">Zůstatek</div><div class="mv">$${fmt(a.balance)}</div></div>
+      <div class="mc"><div class="ml">Equity</div><div class="mv ${a.equity >= a.balance ? 'pos-c' : 'neg-c'}">$${fmt(a.equity)}</div></div>
+      <div class="mc"><div class="ml">Otevř. riziko</div><div class="mv ${riskCls}">${fmt(a.open_risk_pct)} %</div></div>
+    </div></div>`;
+  (d.robots || []).forEach(r => {
+    const ok = r.status === 'ok';
+    const pr = r.progress || {};
+    const pT = Math.min(100, (pr.trades || 0) / (pr.need_trades || 30) * 100);
+    const pM = Math.min(100, (pr.months || 0) / (pr.need_months || 6) * 100);
+    const pos = (r.open || []).map(p => `<div class="erow" style="flex-wrap:wrap;gap:4px 8px;align-items:center;"><span><span class="badge ${p.side === 'long' ? 'bL' : 'bS'}">${p.side === 'long' ? 'Long' : 'Short'}</span> ${escHtml(p.symbol)} ${p.volume}</span>
+      <span style="font-size:11px;color:var(--t2);">vstup ${fmt(p.entry)} · SL ${fmt(p.sl)} · riziko $${fmt(p.risk_usd)}</span>
+      <span class="${p.profit >= 0 ? 'pos-c' : 'neg-c'}" style="font-weight:600;">${sgn(p.profit)}</span></div>`).join('');
+    h += `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:15px;font-weight:600;color:var(--t1);">${escHtml(r.name)}</span>
+        <span class="ind ${ok ? 'pos' : 'neg'}">${ok ? '● běží' : '⚠ ' + escHtml(r.status)}</span>
+      </div>
+      <div style="font-size:11px;color:var(--t2);margin-bottom:6px;">Poslední rozhodnutí ${escHtml(r.last_decision || '–')}${ok ? '' : ' · očekáváno ' + escHtml(r.expected_last || '')}</div>
+      ${pos || '<div style="font-size:12px;color:var(--t2);margin-bottom:6px;">Bez otevřené pozice</div>'}
+      <div class="score-lbl" style="margin-top:6px;"><span>Obchodů ${pr.trades || 0}/${pr.need_trades || 30}</span><span>Měsíců ${fmt(pr.months)}/${pr.need_months || 6}</span></div>
+      <div class="score-bar" style="margin-bottom:4px;"><div class="score-fill" style="width:${pT}%;background:var(--g);"></div></div>
+      <div class="score-bar"><div class="score-fill" style="width:${pM}%;background:var(--a);"></div></div>
+      <div style="font-size:10px;color:var(--t2);margin-top:5px;">Uzavřeno robotem: ${r.closed_count || 0} (${sgn(r.closed_pl || 0)} $) · ruční zásahy: ${r.manual_count || 0}${r.manual_count ? ' ⚠ do vyhodnocení se nepočítají' : ''}</div>
+    </div>`;
+  });
+  const o = d.options || {};
+  const oPos = (o.open || []).map(p => `<div class="erow"><span>${escHtml(p.symbol)} ${escHtml(p.right)} ${fmt(p.strike)}</span><span style="font-size:11px;color:var(--t2);">exp. ${escHtml(p.expiry)} · ${p.qty}×</span><span>$${fmt(p.premium)}</span></div>`).join('');
+  h += `<div class="card"><div class="sl">Opce IBKR (wheel, paper)</div>
+    ${oPos || '<div style="font-size:12px;color:var(--t2);margin-bottom:6px;">Žádná otevřená opce</div>'}
+    <div style="font-size:11px;color:var(--t2);margin-top:6px;">Obchodů: ${o.trades || 0} · čistá prémie $${fmt(o.net_premium_usd || 0)} · poslední běh automatu: ${escHtml(o.last_automat_run || '–')}</div></div>`;
+  const evalDate = ((d.robots || [])[0] || {}).progress ? d.robots[0].progress.eval_date : '';
+  h += `<div class="tip-box"><div class="tip-row"><i class="ti ti-info-circle"></i>${escHtml(d.rules || '')} Vyhodnocení: ${escHtml(evalDate)}.</div></div>`;
+  box.innerHTML = h;
+}
+
 // ─── TABS ─────────────────────────────────────────────────
-const TABS = ['scan', 'calc', 'pos', 'jnl', 'exp'];
-const TITLES = { scan: ['MTF Scanner', 'Twelve Data — živá tržní data'], calc: ['Kalkulátor', 'Výpočet pozice dle ATR a live ceny'], pos: ['Otevřené pozice', 'Sledování a management'], jnl: ['Trading Journal', 'Historie a equity křivka'], exp: ['Export', 'PDF a CSV report'] };
-function swT(t) { TABS.forEach(id => { document.getElementById('tp-' + id).className = 'tp' + (id === t ? ' on' : ''); document.getElementById('nb-' + id).className = 'nb' + (id === t ? ' on' : ''); }); document.getElementById('hT').textContent = TITLES[t][0]; document.getElementById('hS').textContent = TITLES[t][1]; document.getElementById('body').scrollTop = 0; if (t === 'jnl') renderJnl(); if (t === 'exp') updExp(); }
+const TABS = ['scan', 'bot', 'calc', 'pos', 'jnl', 'exp'];
+const TITLES = { scan: ['MTF Scanner', 'Twelve Data — živá tržní data'], bot: ['Roboti', 'Demo MT5 + opce IBKR — stav z PC'], calc: ['Kalkulátor', 'Výpočet pozice dle ATR a live ceny'], pos: ['Otevřené pozice', 'Sledování a management'], jnl: ['Trading Journal', 'Historie a equity křivka'], exp: ['Export', 'PDF a CSV report'] };
+function swT(t) { TABS.forEach(id => { document.getElementById('tp-' + id).className = 'tp' + (id === t ? ' on' : ''); document.getElementById('nb-' + id).className = 'nb' + (id === t ? ' on' : ''); }); document.getElementById('hT').textContent = TITLES[t][0]; document.getElementById('hS').textContent = TITLES[t][1]; document.getElementById('body').scrollTop = 0; if (t === 'jnl') renderJnl(); if (t === 'exp') updExp(); if (t === 'bot') { renderBots(); if (botCfg.repo && botCfg.token) loadBots(); } }
 function badge() { const bP = document.getElementById('bP'), bJ = document.getElementById('bJ'); if (positions.length) { bP.textContent = positions.length; bP.style.display = 'block'; } else bP.style.display = 'none'; if (journal.length) { bJ.textContent = journal.length; bJ.style.display = 'block'; } else bJ.style.display = 'none'; }
 
 function updExp() {
