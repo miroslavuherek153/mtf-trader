@@ -1433,6 +1433,20 @@ loadGold();
 
 loadLastScanFromStorage();
 
+// Nastavení záložky Roboti z odkazu / QR kódu (#cockpit=repo,token). Část za # se neposílá
+// na server; hned po uložení se z adresy smaže, aby token nezůstal v historii prohlížeče.
+(function setupFromLink() {
+  const m = location.hash.match(/^#cockpit=([^,]+),(.+)$/);
+  if (!m) return;
+  const repo = decodeURIComponent(m[1]), token = decodeURIComponent(m[2]).trim();
+  history.replaceState(null, '', location.pathname + location.search);
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repo) || token.length < 20) { alert('Odkaz pro nastavení Robotů je neplatný.'); return; }
+  botCfg = { repo, token };
+  localStorage.setItem('mtf_bot_cfg', JSON.stringify(botCfg));
+  swT('bot');
+  alert('Záložka Roboti nastavena (' + repo + ').');
+})();
+
 if (!API_KEY) setApiSt('○ chybí klíč', 'var(--r)');
 
 // ─── SERVICE WORKER ───────────────────────────────────────
