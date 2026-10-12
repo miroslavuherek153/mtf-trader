@@ -1468,9 +1468,21 @@ loadLastScanFromStorage();
 if (!API_KEY) setApiSt('○ chybí klíč', 'var(--r)');
 
 // ─── SERVICE WORKER ───────────────────────────────────────
+let swReg = null;
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').then(() => console.log('SW registered')).catch(e => console.log('SW error:', e));
+  navigator.serviceWorker.register('sw.js').then(r => { swReg = r; console.log('SW registered'); }).catch(e => console.log('SW error:', e));
 }
+
+// ─── SAMOČINNÁ AKTUALIZACE ────────────────────────────────
+// Stav robotů: na záložce Roboti každých 5 min a vždy po návratu do appky (PC nahrává stav každých 15 min).
+// Nová verze appky: po návratu do appky se zkontroluje; projeví se při dalším otevření (index.html je network-first).
+const botTabOn = () => document.getElementById('tp-bot').classList.contains('on');
+setInterval(() => { if (!document.hidden && botTabOn() && botCfg.repo && botCfg.token) loadBots(); }, 5 * 60 * 1000);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  if (swReg) swReg.update().catch(() => {});
+  if (botTabOn() && botCfg.repo && botCfg.token) loadBots();
+});
 </script>
 </body>
 </html>
