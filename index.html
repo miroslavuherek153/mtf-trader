@@ -1193,10 +1193,28 @@ function renderBots() {
     </div>`;
   });
   const o = d.options || {};
-  const oPos = (o.open || []).map(p => `<div class="erow"><span>${escHtml(p.symbol)} ${escHtml(p.right)} ${fmt(p.strike)}</span><span style="font-size:11px;color:var(--t2);">exp. ${escHtml(p.expiry)} · ${p.qty}×</span><span>$${fmt(p.premium)}</span></div>`).join('');
+  const oPos = (o.open || []).map(p => {
+    const pl = p.pl_usd, has = pl !== null && pl !== undefined;
+    const tp = p.profit_pct !== null && p.profit_pct !== undefined ? Math.max(0, Math.min(100, p.profit_pct / 50 * 100)) : 0;
+    return `<div style="border-top:0.5px solid var(--bd2);padding:8px 0;">
+      <div class="erow"><span><b>${escHtml(p.symbol)}</b> ${p.right === 'P' ? 'put' : 'call'} ${fmt(p.strike)}</span>
+        <span style="font-size:11px;color:var(--t2);">exp. ${escHtml(p.expiry.slice(6, 8) + '.' + p.expiry.slice(4, 6) + '.')} · ${p.dte} dní</span>
+        <span style="font-weight:500;color:${has ? (pl >= 0 ? 'var(--g)' : 'var(--r)') : 'var(--t2)'};">${has ? sgn(pl) + ' $' : '–'}</span></div>
+      <div style="font-size:11px;color:var(--t2);margin:3px 0;">Prémie ${fmt(p.premium)} ($${fmt(p.premium_usd)})${p.mid !== null && p.mid !== undefined ? ' · teď ' + fmt(p.mid) : ''}
+        · akcie ${p.underlying ? fmt(p.underlying) : '–'}${p.dist_pct !== null && p.dist_pct !== undefined ? ' (' + fmt(p.dist_pct) + ' % nad strike)' : ''}${p.delta ? ' · delta ' + fmt(p.delta) : ''}</div>
+      <div class="score-lbl"><span>K cíli 50 % zisku</span><span>${p.profit_pct !== null && p.profit_pct !== undefined ? fmt(p.profit_pct) + ' %' : 'kotace zítra 19:30'}</span></div>
+      <div class="score-bar"><div class="score-fill" style="width:${tp}%;background:var(--g);"></div></div>
+      <div style="font-size:10px;color:var(--t2);margin-top:4px;">Kolaterál $${fmt(p.collateral)} · nejpozději zavřít ${escHtml(p.close_by)} (21 dní před expirací)${p.quote_time ? ' · kotace ' + escHtml(p.quote_time) : ''}</div>
+    </div>`;
+  }).join('');
+  const oStk = (o.stocks || []).map(st => `<div class="erow"><span>${escHtml(st.symbol)} akcie</span><span>${st.qty} ks</span><span>á $${fmt(st.avg_cost)}</span></div>`).join('');
+  const used = o.budget_usd ? Math.min(100, (o.collateral_usd || 0) / o.budget_usd * 100) : 0;
   h += `<div class="card"><div class="sl">Opce IBKR (wheel, paper)</div>
     ${oPos || '<div style="font-size:12px;color:var(--t2);margin-bottom:6px;">Žádná otevřená opce</div>'}
-    <div style="font-size:11px;color:var(--t2);margin-top:6px;">Obchodů: ${o.trades || 0} · čistá prémie $${fmt(o.net_premium_usd || 0)} · poslední běh automatu: ${escHtml(o.last_automat_run || '–')}</div></div>`;
+    ${oStk ? '<div style="border-top:0.5px solid var(--bd2);padding-top:6px;font-size:11px;color:var(--t2);">Akcie z přiřazení (čeká krytý call)</div>' + oStk : ''}
+    <div class="score-lbl" style="margin-top:8px;"><span>Kolaterál $${fmt(o.collateral_usd || 0)} z $${fmt(o.budget_usd || 0)}</span><span>${fmt(used)} %</span></div>
+    <div class="score-bar"><div class="score-fill" style="width:${used}%;background:var(--a);"></div></div>
+    <div style="font-size:11px;color:var(--t2);margin-top:6px;">Obchodů: ${o.trades || 0} · vybraná prémie $${fmt(o.net_premium_usd || 0)} · poslední běh automatu: ${escHtml(o.last_automat_run || '–')}</div></div>`;
   const evalDate = ((d.robots || [])[0] || {}).progress ? d.robots[0].progress.eval_date : '';
   h += `<div class="tip-box"><div class="tip-row"><i class="ti ti-info-circle"></i>${escHtml(d.rules || '')} Vyhodnocení: ${escHtml(evalDate)}.</div></div>`;
   box.innerHTML = h;
