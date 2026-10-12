@@ -4,7 +4,7 @@
 // Ostatní statické soubory (manifest, ikony appky): cache-first
 // api.twelvedata.com: vždy síť, nikdy se necachuje (živá tržní data)
 
-const CACHE_NAME = 'mtf-trader-v11';
+const CACHE_NAME = 'mtf-trader-v12';
 
 const STATIC_ASSETS = [
   './index.html',

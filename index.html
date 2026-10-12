@@ -1064,7 +1064,7 @@ function renderJnl() {
 
   document.getElementById('jTotal').textContent = n;
   const wr = document.getElementById('jWR'); wr.textContent = n ? Math.round(wins / n * 100) + '%' : '–'; wr.style.color = n && wins / n >= 0.5 ? 'var(--g)' : 'var(--r)';
-  const pl = document.getElementById('jPL'); pl.textContent = (totalPL >= 0 ? '+' : '') + `$${Math.abs(totalPL).toFixed(2)}`; pl.style.color = totalPL >= 0 ? 'var(--g)' : 'var(--r)';
+  const pl = document.getElementById('jPL'); pl.textContent = (totalPL >= 0 ? '+' : '-') + `$${Math.abs(totalPL).toFixed(2)}`; pl.style.color = totalPL >= 0 ? 'var(--g)' : 'var(--r)';
   document.getElementById('jRR').textContent = n ? '1:' + avgRR.toFixed(2) : '–';
   const pf = document.getElementById('jPF');
   pf.textContent = profitFactor === null ? '–' : profitFactor === Infinity ? '∞' : profitFactor.toFixed(2);
@@ -1087,7 +1087,7 @@ function renderJnl() {
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
       <span style="font-size:14px;font-weight:500;color:var(--t1);">${j.name.replace('/', '')}</span>
       <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:15px;font-weight:600;color:${j.pl >= 0 ? 'var(--g)' : 'var(--r)'};">${j.pl >= 0 ? '+' : ''}$${Math.abs(j.pl).toFixed(2)}</span>
+        <span style="font-size:15px;font-weight:600;color:${j.pl >= 0 ? 'var(--g)' : 'var(--r)'};">${j.pl >= 0 ? '+' : '-'}$${Math.abs(j.pl).toFixed(2)}</span>
         <button class="delbtn" onclick="delJnl(${j.id})">×</button>
       </div>
     </div>
@@ -1235,7 +1235,7 @@ function updExp() {
   document.getElementById('xCnt').textContent = positions.length;
   document.getElementById('xTR').textContent = positions.length ? '-$' + tR.toFixed(2) : '$0';
   document.getElementById('xJC').textContent = n;
-  document.getElementById('xJPL').textContent = (totalPL >= 0 ? '+' : '') + `$${Math.abs(totalPL).toFixed(2)}`;
+  document.getElementById('xJPL').textContent = (totalPL >= 0 ? '+' : '-') + `$${Math.abs(totalPL).toFixed(2)}`;
   document.getElementById('xWR').textContent = n ? Math.round(wins / n * 100) + '%' : '–';
   document.getElementById('xDt').textContent = new Date().toLocaleString('cs-CZ');
 }
@@ -1256,7 +1256,7 @@ function expPDF() {
     const bal = +document.getElementById('bal').value || 0, rp = +document.getElementById('rp').value || 1;
     const tR = positions.reduce((s, p) => s + p.risk, 0), n = journal.length, wins = journal.filter(j => j.pl > 0).length, totalPL = journal.reduce((s, j) => s + j.pl, 0);
     doc.setTextColor(40, 40, 40); doc.setFontSize(11); doc.setFont(undefined, 'bold'); doc.text(pdfTxt('Přehled účtu'), 14, y); y += 8;
-    [['Zůstatek', '$' + bal.toLocaleString()], ['Riziko/obchod', rp + '%'], ['Otevřených pozic', String(positions.length)], ['Celkové riziko', '$' + tR.toFixed(2)], ['Journal', n + ' obchodů'], ['Celkový P&L', (totalPL >= 0 ? '+' : '') + `$${Math.abs(totalPL).toFixed(2)}`], ['Win rate', n ? Math.round(wins / n * 100) + '%' : '–']].forEach(([l, v]) => { doc.setFont(undefined, 'normal'); doc.setTextColor(100, 100, 100); doc.text(pdfTxt(l), 14, y); doc.setFont(undefined, 'bold'); doc.setTextColor(40, 40, 40); doc.text(pdfTxt(v), 196, y, { align: 'right' }); y += 7; });
+    [['Zůstatek', '$' + bal.toLocaleString()], ['Riziko/obchod', rp + '%'], ['Otevřených pozic', String(positions.length)], ['Celkové riziko', '$' + tR.toFixed(2)], ['Journal', n + ' obchodů'], ['Celkový P&L', (totalPL >= 0 ? '+' : '-') + `$${Math.abs(totalPL).toFixed(2)}`], ['Win rate', n ? Math.round(wins / n * 100) + '%' : '–']].forEach(([l, v]) => { doc.setFont(undefined, 'normal'); doc.setTextColor(100, 100, 100); doc.text(pdfTxt(l), 14, y); doc.setFont(undefined, 'bold'); doc.setTextColor(40, 40, 40); doc.text(pdfTxt(v), 196, y, { align: 'right' }); y += 7; });
     if (journal.length) {
       y += 5; doc.setFillColor(29, 158, 117); doc.rect(14, y - 5, 182, 7, 'F');
       doc.setTextColor(255, 255, 255); doc.setFont(undefined, 'bold'); doc.setFontSize(9); doc.text('Trading Journal', 16, y); y += 8;
@@ -1266,7 +1266,7 @@ function expPDF() {
         doc.setTextColor(40, 40, 40); doc.setFont(undefined, 'normal'); doc.setFontSize(8);
         doc.text(j.name.replace('/', ''), 16, y); doc.text(j.dir, 54, y); doc.text(j.lots.toFixed(2), 72, y);
         doc.setTextColor(j.pl >= 0 ? 29 : 180, j.pl >= 0 ? 158 : 40, j.pl >= 0 ? 117 : 40);
-        doc.text((j.pl >= 0 ? '+' : '') + `$${Math.abs(j.pl).toFixed(2)}`, 140, y);
+        doc.text((j.pl >= 0 ? '+' : '-') + `$${Math.abs(j.pl).toFixed(2)}`, 140, y);
         doc.setTextColor(80, 80, 80); doc.text(new Date(j.ts).toLocaleDateString('cs-CZ'), 172, y); y += 7;
       });
     }
