@@ -1197,7 +1197,7 @@ function renderBots() {
     const pl = p.pl_usd, has = pl !== null && pl !== undefined;
     const tp = p.profit_pct !== null && p.profit_pct !== undefined ? Math.max(0, Math.min(100, p.profit_pct / 50 * 100)) : 0;
     return `<div style="border-top:0.5px solid var(--bd2);padding:8px 0;">
-      <div class="erow"><span><b>${escHtml(p.symbol)}</b> ${p.right === 'P' ? 'put' : 'call'} ${fmt(p.strike)}</span>
+      <div class="erow"><span><b>${escHtml(p.symbol)}</b> ${p.right === 'P' ? 'put' : 'call'} ${fmt(p.strike)} <span style="font-size:10px;color:var(--t2);">${escHtml(p.source || '')}</span></span>
         <span style="font-size:11px;color:var(--t2);">exp. ${escHtml(p.expiry.slice(6, 8) + '.' + p.expiry.slice(4, 6) + '.')} · ${p.dte} dní</span>
         <span style="font-weight:500;color:${has ? (pl >= 0 ? 'var(--g)' : 'var(--r)') : 'var(--t2)'};">${has ? sgn(pl) + ' $' : '–'}</span></div>
       <div style="font-size:11px;color:var(--t2);margin:3px 0;">Prémie ${fmt(p.premium)} ($${fmt(p.premium_usd)})${p.mid !== null && p.mid !== undefined ? ' · teď ' + fmt(p.mid) : ''}
