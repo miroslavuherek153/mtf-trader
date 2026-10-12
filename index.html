@@ -1245,6 +1245,47 @@ function updExp() {
 // se v PDF vykreslilo jako nesmyslné znaky. Bez vloženého fontu je nejspolehlivější
 // diakritiku odstranit.
 function pdfTxt(v) { return String(v).normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+// Roboti MT5 a opce IBKR v PDF - z posledních načtených dat záložky Roboti (botData)
+function pdfBots(doc, y) {
+  const d = botData;
+  if (!d) return y;
+  const f = v => (v === null || v === undefined || v === '') ? '-' : (+v).toLocaleString('cs-CZ', { maximumFractionDigits: 2 });
+  const s = v => (v > 0 ? '+' : '') + f(v);
+  const page = need => { if (y + need > 278) { doc.addPage(); y = 20; } };
+  const head = t => { page(16); y += 6; doc.setFillColor(29, 158, 117); doc.rect(14, y - 5, 182, 7, 'F'); doc.setTextColor(255, 255, 255); doc.setFont(undefined, 'bold'); doc.setFontSize(9); doc.text(pdfTxt(t), 16, y); y += 8; };
+  const line = (l, r, bold, color) => {
+    doc.setFontSize(8); doc.setFont(undefined, bold ? 'bold' : 'normal'); doc.setTextColor(...(color || [40, 40, 40]));
+    const parts = doc.splitTextToSize(pdfTxt(l), r ? 130 : 176);   // dlouhý řádek se zalomí, nepřeteče přes okraj
+    page(5.5 * parts.length);
+    if (r) doc.text(pdfTxt(r), 194, y, { align: 'right' });
+    parts.forEach(t => { doc.text(t, 16, y); y += 4.5; });
+    y += 1;
+  };
+  const plc = v => v >= 0 ? [29, 158, 117] : [180, 40, 40];
+  const a = d.account || {};
+  head(`Roboti MT5 ${a.demo ? '(demo) ' : ''}- ucet ${a.login || ''}, stav ${d.generated || ''}`);
+  line('Zůstatek / equity / otevřené riziko', `$${f(a.balance)} / $${f(a.equity)} / ${f(a.open_risk_pct)} %`, true);
+  (d.robots || []).forEach(r => {
+    const pr = r.progress || {};
+    page(14); y += 1.5;
+    line(`${r.name} - ${r.status === 'ok' ? 'běží' : r.status}`, `obchodů ${pr.trades || 0}/${pr.need_trades || 30} · měsíců ${f(pr.months)}/${pr.need_months || 6}`, true);
+    line(`  poslední rozhodnutí ${r.last_decision || '-'} · uzavřeno robotem ${r.closed_count || 0} (${s(r.closed_pl || 0)} $) · ruční zásahy ${r.manual_count || 0}`, '', false, [100, 100, 100]);
+    (r.open || []).forEach(p => line(`  ${p.side === 'long' ? 'LONG' : 'SHORT'} ${p.symbol} ${p.volume} · vstup ${f(p.entry)} · SL ${f(p.sl)} · riziko $${f(p.risk_usd)}`, `${s(p.profit)} $`, false, plc(p.profit)));
+  });
+  const o = d.options || {};
+  head('Opce IBKR (wheel, paper)');
+  if (!(o.open || []).length) line('Žádná otevřená opce');
+  (o.open || []).forEach(p => {
+    page(12);
+    const pl = p.pl_usd;
+    line(`${p.symbol} ${p.right === 'P' ? 'put' : 'call'} ${f(p.strike)} · exp. ${p.expiry} (${p.dte} dní) · ${p.source || ''}`, pl === null || pl === undefined ? 'kotace -' : `${s(pl)} $`, true, pl === null || pl === undefined ? null : plc(pl));
+    line(`  prémie ${f(p.premium)} ($${f(p.premium_usd)})${p.mid != null ? ' · teď ' + f(p.mid) : ''} · akcie ${f(p.underlying)}${p.dist_pct != null ? ' (' + f(p.dist_pct) + ' % nad strike)' : ''} · k cíli 50 %: ${p.profit_pct != null ? f(p.profit_pct) + ' %' : '-'} · kolaterál $${f(p.collateral)} · zavřít nejpozději ${p.close_by}`, '', false, [100, 100, 100]);
+  });
+  (o.stocks || []).forEach(st => line(`Akcie z přiřazení: ${st.symbol} ${st.qty} ks á $${f(st.avg_cost)}`));
+  line(`Kolaterál $${f(o.collateral_usd || 0)} z $${f(o.budget_usd || 0)} · obchodů ${o.trades || 0} · vybraná prémie $${f(o.net_premium_usd || 0)} · poslední běh automatu ${o.last_automat_run || '-'}`, '', true);
+  return y;
+}
+
 function expPDF() {
   try {
     const { jsPDF } = window.jspdf; const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -1270,6 +1311,7 @@ function expPDF() {
         doc.setTextColor(80, 80, 80); doc.text(new Date(j.ts).toLocaleDateString('cs-CZ'), 172, y); y += 7;
       });
     }
+    y = pdfBots(doc, y);
     doc.setFontSize(7); doc.setTextColor(180, 180, 180); doc.text(pdfTxt('Pouze informativní účely | ' + now), 14, 287);
     doc.save('mtf-report-' + new Date().toISOString().slice(0, 10) + '.pdf');
   } catch (e) { alert('Chyba při generování PDF: ' + e.message); }
