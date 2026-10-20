@@ -123,6 +123,15 @@ display:flex;background:var(--bg1);flex-shrink:0;
 .sym-name{font-size:17px;font-weight:700;color:var(--t1);}
 .sym-price{font-size:16px;font-weight:600;}
 .tf-row{display:flex;gap:5px;margin-bottom:9px;}
+.sm-card{padding:11px 12px;}
+.sm-t{width:100%;border-collapse:collapse;font-size:12px;}
+.sm-t th{font-size:9px;font-weight:600;color:var(--t2);text-align:left;padding:3px 4px;text-transform:uppercase;letter-spacing:.03em;}
+.sm-t td{padding:6px 4px;border-top:1px solid var(--bg2);font-variant-numeric:tabular-nums;}
+.sm-t tr{cursor:pointer;}
+.sm-t td:nth-child(3),.sm-t td:nth-child(4),.sm-t td:nth-child(5),.sm-t th:nth-child(3),.sm-t th:nth-child(4),.sm-t th:nth-child(5){text-align:center;}
+.sm-up{color:var(--g);font-weight:700;}.sm-dn{color:var(--r);font-weight:700;}.sm-n{color:var(--t3);}
+.sm-bar{display:inline-block;width:34px;height:5px;border-radius:3px;background:var(--bg2);overflow:hidden;vertical-align:middle;margin-right:4px;}
+.sm-bar>div{height:100%;}
 .tf-b{flex:1;padding:6px 3px;border-radius:10px;text-align:center;}
 .tf-b .tf-lbl{font-size:9px;display:block;margin-bottom:1px;opacity:.7;}
 .tf-b .tf-val{font-size:10px;font-weight:700;}
@@ -192,7 +201,7 @@ display:flex;background:var(--bg1);flex-shrink:0;
 <!-- Header -->
 <div class="hd">
 <div class="ht" id="hT">MTF Scanner</div>
-<div class="hs" id="hS">Twelve Data — živá tržní data</div>
+<div class="hs" id="hS">Binance + Twelve Data — živá tržní data</div>
 </div>
 
 <!-- Body -->
@@ -211,11 +220,23 @@ display:flex;background:var(--bg1);flex-shrink:0;
 <button class="pi" data-sym="EUR/USD" onclick="toggleSym(this)">EURUSD</button>
 <button class="pi" data-sym="GBP/USD" onclick="toggleSym(this)">GBPUSD</button>
 <button class="pi" data-sym="AAPL" onclick="toggleSym(this)">AAPL</button>
+<button class="pi" data-sym="NVDA" onclick="toggleSym(this)">NVDA</button>
+<button class="pi" data-sym="TSLA" onclick="toggleSym(this)">TSLA</button>
+<button class="pi" data-sym="SPY" onclick="toggleSym(this)">SPY</button>
 </div>
+<div style="font-size:10px;color:var(--t2);margin:-4px 0 8px;">Zlato, krypto a akcie z Binance (bez klíče, za pár sekund) · forex z Twelve Data (klíč 🔑, 8 volání/min)</div>
 <div class="sym-card" id="goldCard" style="cursor:default;"><div class="sl">Zlato · XAU/USD</div><div style="font-size:12px;color:var(--t2);">Načítám…</div></div>
+<div id="scanSummary"></div>
 <div class="log-box" id="logBox">Připraven. Stiskni ↻ Načíst data.
 </div>
 <div id="scanCards"></div>
+<details class="card" style="margin-top:4px;"><summary style="font-size:12px;color:var(--t2);cursor:pointer;">Co víme z testů (signály berte jako informaci)</summary>
+<div style="font-size:11px;color:var(--t2);line-height:1.5;margin-top:6px;">
+• MTF skener (trend 1D/4H/1H + vstup) byl v testech na historii mírně ztrátový (−0,01 až −0,4 R na obchod).<br>
+• Filtr podle toku objednávek z Binance ho nezlepšil (BTC/ETH 2020–23).<br>
+• „Sniper“ s cílem 0,5× ATR a stopem 1× ATR potřebuje přes 67 % úspěšných obchodů; podobný test malých cílů na zlatě dal 56 % proti potřebným 77 %.<br>
+• Skóre ukazuje, kam trh míří teď, ne že tam půjde. Rozhoduje riziko: 1 % na obchod, denní limit.
+</div></details>
 </div>
 
 <!-- ─── ROBOTI ─── -->
@@ -247,6 +268,9 @@ display:flex;background:var(--bg1);flex-shrink:0;
 <button class="pi" data-sym="EUR/USD" onclick="selI(this,'EUR/USD',0.00001,100000)">EURUSD</button>
 <button class="pi" data-sym="GBP/USD" onclick="selI(this,'GBP/USD',0.00001,100000)">GBPUSD</button>
 <button class="pi" data-sym="AAPL" onclick="selI(this,'AAPL',0.01,1)">AAPL</button>
+<button class="pi" data-sym="NVDA" onclick="selI(this,'NVDA',0.01,1)">NVDA</button>
+<button class="pi" data-sym="TSLA" onclick="selI(this,'TSLA',0.01,1)">TSLA</button>
+<button class="pi" data-sym="SPY" onclick="selI(this,'SPY',0.01,1)">SPY</button>
 </div>
 <div class="dtog">
 <button class="db onL" id="dL" onclick="setDir('long')">▲ Long (nákup)</button>
@@ -489,6 +513,31 @@ async function fetchCandles(symbol, interval, outputsize = 55) {
   return live.length >= 10 ? live : vals;
 }
 
+// Binance USD-M futures (veřejné, bez klíče, CORS povolen): zlato, krypto a akciové perpetualy.
+// Formát svíček se převádí na stejný jako Twelve Data, takže ukazatele i SL/TP fungují beze změny.
+// XAUUSDT bývá o ~5–8 USD výš než spot u brokera; akciové kontrakty se obchodují 24/7.
+const BINANCE = { 'XAU/USD': 'XAUUSDT', 'BTC/USD': 'BTCUSDT', 'ETH/USD': 'ETHUSDT', 'AAPL': 'AAPLUSDT',
+  'NVDA': 'NVDAUSDT', 'TSLA': 'TSLAUSDT', 'SPY': 'SPYUSDT' };
+const BN_IV = { '1h': '1h', '4h': '4h', '1day': '1d' };
+async function fetchBinance(sym, interval, n) {
+  const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${BINANCE[sym]}&interval=${BN_IV[interval]}&limit=${n}`;
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), 12000);
+  let res;
+  try { res = await fetch(url, { signal: ctrl.signal }); }
+  catch (e) { throw new Error(e.name === 'AbortError' ? 'Vypršel časový limit (Binance).' : 'Síťová chyba (Binance).'); }
+  finally { clearTimeout(to); }
+  if (!res.ok) throw new Error(`Binance HTTP ${res.status}`);
+  const k = await res.json();
+  if (!Array.isArray(k) || !k.length) throw new Error('Binance: žádná data pro ' + sym);
+  return k.map(x => ({ datetime: new Date(x[0]).toISOString(), open: x[1], high: x[2], low: x[3], close: x[4], volume: x[5] }));
+}
+const isBinanceSym = sym => !!BINANCE[sym];
+async function fetchCandlesAny(sym, interval, n = 55) {
+  return isBinanceSym(sym) ? fetchBinance(sym, interval, n) : fetchCandles(sym, interval, n);
+}
+const srcName = sym => isBinanceSym(sym) ? 'Binance ' + BINANCE[sym] : 'Twelve Data';
+
 // ─── FORMÁTOVÁNÍ CEN ──────────────────────────────────────
 // Forex páry mají 5 desetinných míst (JPY 3) — dřív se všechny ceny (vstup, SL,
 // TP) zaokrouhlovaly na 2 místa, takže u EURUSD vyšel vstup 1.09 a SL 1.08
@@ -662,34 +711,56 @@ const API_DELAY = 8000;
 async function startScan() {
   if (scanning) return;
   loadGold(); // karta Zlato se obnoví i bez API klíče
-  if (!ensureApiKey()) return;
+  // Kopie seznamu: přepnutí instrumentu během scanu dřív měnilo rozběhnutou smyčku.
+  const all = [...activeSyms];
+  const tdAll = all.filter(s => !isBinanceSym(s));
+  if (tdAll.length && !API_KEY) log('Forex potřebuje Twelve Data klíč (🔑) — skenuji jen instrumenty z Binance.', 'warn');
+  const syms = API_KEY ? all : all.filter(isBinanceSym);
+  if (!syms.length) { ensureApiKey(); return; }
   scanning = true;
   const prevScan = { ...lastScan }; // pro porovnání skóre s minulým scanem
   const btn = document.getElementById('refBtn');
   btn.disabled = true; btn.textContent = 'Načítám…';
   document.getElementById('scanCards').innerHTML = '';
+  document.getElementById('scanSummary').innerHTML = '';
   document.getElementById('logBox').innerHTML = '';
   setApiSt('● FETCH', 'var(--a)');
-  // Kopie seznamu: přepnutí instrumentu během scanu (8s prodlevy) dřív měnilo
-  // rozběhnutou smyčku (přidaný symbol se načetl uprostřed, poslední prodleva se počítala špatně).
-  const syms = [...activeSyms];
-  log('Spouštím scan pro ' + syms.length + ' instrumentů (1H + 4H + 1D)…');
-  log('Sekvenční volání — 8s prodleva mezi každým (rate limit 8 volání/min free plánu)', 'warn');
   for (const sym of syms) {
-    const short = sym.replace('/', '');
     const ph = document.createElement('div');
-    ph.className = 'load-card'; ph.id = 'lc-' + short;
-    ph.innerHTML = `<span class="spin"></span><span style="font-size:13px;color:var(--t2);">Načítám ${short}…</span>`;
+    ph.className = 'load-card'; ph.id = 'lc-' + sym.replace('/', '');
+    ph.innerHTML = `<span class="spin"></span><span style="font-size:13px;color:var(--t2);">Načítám ${sym.replace('/', '')}…</span>`;
     document.getElementById('scanCards').appendChild(ph);
+  }
+  const bn = syms.filter(isBinanceSym), td = syms.filter(s => !isBinanceSym(s));
+  log(`Scan ${syms.length} instrumentů (1H + 4H + 1D): ${bn.length} z Binance najednou` + (td.length ? `, ${td.length} z Twelve Data po 8 s (limit 8 volání/min)` : '') + '…');
+  await Promise.all(bn.map(sym => scanOne(sym, prevScan, false)));
+  for (const sym of td) {
+    await scanOne(sym, prevScan, true);
+    if (sym !== td[td.length - 1]) await delay(API_DELAY);
+  }
+  renderSummary();
+  setApiSt('● LIVE', 'var(--g)');
+  log('Scan dokončen.', 'ok');
+  saveLastScan();
+  scanning = false; btn.disabled = false; btn.textContent = '↻ Načíst data';
+}
+
+async function scanOne(sym, prevScan, throttle) {
+    const short = sym.replace('/', '');
     try {
-      log(`${short}: načítám 1H…`);
-      const c1h = await fetchCandles(sym, '1h', 55);
-      await delay(API_DELAY);
-      log(`${short}: načítám 4H…`);
-      const c4h = await fetchCandles(sym, '4h', 55);
-      await delay(API_DELAY);
-      log(`${short}: načítám 1D…`);
-      const c1d = await fetchCandles(sym, '1day', 55);
+      let c1h, c4h, c1d;
+      if (throttle) {                                    // Twelve Data: sekvenčně kvůli limitu free plánu
+        log(`${short}: načítám 1H…`);
+        c1h = await fetchCandles(sym, '1h', 55);
+        await delay(API_DELAY);
+        log(`${short}: načítám 4H…`);
+        c4h = await fetchCandles(sym, '4h', 55);
+        await delay(API_DELAY);
+        log(`${short}: načítám 1D…`);
+        c1d = await fetchCandles(sym, '1day', 55);
+      } else {
+        [c1h, c4h, c1d] = await Promise.all([fetchBinance(sym, '1h', 55), fetchBinance(sym, '4h', 55), fetchBinance(sym, '1day', 55)]);
+      }
       const a1h = analyzeTF(c1h), a4h = analyzeTF(c4h), a1d = analyzeTF(c1d);
       const price = a1h.last;
       // Váhy rostou s vyšším rámcem: 1H×1, 4H×1.5, 1D×2 (dělitel 4.5)
@@ -703,7 +774,7 @@ async function startScan() {
       const prevOverall = prevScan[sym] ? prevScan[sym].overall : null;
       const scoreDelta = prevOverall !== null ? overall - prevOverall : null;
       log(`${short}: ✓ skóre ${overall} → ${sig.toUpperCase()}`, 'ok');
-      const d = { sym, price, a1h, a4h, a1d, overall, sig, atrV, stops, confluent, c1h, scoreDelta };
+      const d = { sym, price, a1h, a4h, a1d, overall, sig, atrV, stops, confluent, c1h, scoreDelta, src: srcName(sym) };
       lastScan[sym] = d;
       const card = document.getElementById('lc-' + short);
       if (card) card.outerHTML = buildCard(d);
@@ -712,12 +783,23 @@ async function startScan() {
       const card = document.getElementById('lc-' + short);
       if (card) card.outerHTML = `<div class="err-card"><div class="err-title">✗ ${short} — chyba</div><div>${escHtml(e.message)}</div>${/rate|limit|429|credits/i.test(e.message) ? '<div style="margin-top:4px;">⚠️ Limit API (8 volání/min, 800/den) — počkej minutu.</div>' : ''}</div>`;
     }
-    if (sym !== syms[syms.length - 1]) await delay(API_DELAY);
-  }
-  setApiSt('● LIVE', 'var(--g)');
-  log('Scan dokončen.', 'ok');
-  saveLastScan();
-  scanning = false; btn.disabled = false; btn.textContent = '↻ Načíst data';
+}
+
+// Přehled: všechny instrumenty v jedné tabulce, nejsilnější signál nahoře; klik = kalkulátor
+function renderSummary() {
+  const box = document.getElementById('scanSummary');
+  const rows = Object.values(lastScan).filter(d => d && d.a1h && d.a4h && d.a1d && activeSyms.includes(d.sym))
+    .sort((a, b) => Math.abs(b.overall - 50) - Math.abs(a.overall - 50));
+  if (!rows.length) { box.innerHTML = ''; return; }
+  const arrow = t => t === 'bull' ? '<span class="sm-up">▲</span>' : t === 'bear' ? '<span class="sm-dn">▼</span>' : '<span class="sm-n">→</span>';
+  const sigTxt = d => d.sig === 'bull' ? '<span class="sm-up">LONG</span>' : d.sig === 'bear' ? '<span class="sm-dn">SHORT</span>' : '<span class="sm-n">čekat</span>';
+  box.innerHTML = `<div class="card sm-card"><div class="sl" style="margin-bottom:6px;">Přehled · ${new Date().toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}</div>
+  <table class="sm-t"><thead><tr><th>Instrument</th><th>Cena</th><th>1D</th><th>4H</th><th>1H</th><th>Skóre</th><th>Signál</th></tr></thead><tbody>
+  ${rows.map(d => `<tr onclick="loadCalc('${d.sym}')"><td><b>${d.sym.replace('/', '')}</b>${d.confluent ? '' : ' <span title="rámce si neodpovídají" class="sm-n">·</span>'}</td>
+    <td>${fmtP(d.price, d.sym)}</td><td>${arrow(d.a1d.trend)}</td><td>${arrow(d.a4h.trend)}</td><td>${arrow(d.a1h.trend)}</td>
+    <td><div class="sm-bar"><div style="width:${d.overall}%;background:${d.sig === 'bull' ? 'var(--g)' : d.sig === 'bear' ? 'var(--r)' : 'var(--t3)'}"></div></div>${d.overall}</td>
+    <td>${sigTxt(d)}</td></tr>`).join('')}
+  </tbody></table><div style="font-size:10px;color:var(--t2);margin-top:4px;">Klepnutím na řádek předvyplníte kalkulátor. Seřazeno od nejsilnějšího signálu.</div></div>`;
 }
 
 function buildCard(d) {
@@ -739,7 +821,7 @@ function buildCard(d) {
   let sniperTxt = '';
   if (d.sig !== 'neu') {
     const sn = computeSniperStops(p, d.atrV, d.sig === 'bull');
-    sniperTxt = `<div class="sig-box ${d.sig}" style="margin-top:6px;opacity:.85;"><div class="sig-title">🎯 Sniper (rychlý)</div><div style="font-size:11px;">SL ${fmtP(sn.sl, d.sym)} → TP ${fmtP(sn.tp, d.sym)} · R:R 1:0.5, potřebuje &gt;67% win rate</div></div>`;
+    sniperTxt = `<div class="sig-box ${d.sig}" style="margin-top:6px;opacity:.85;"><div class="sig-title">🎯 Sniper (rychlý)</div><div style="font-size:11px;">SL ${fmtP(sn.sl, d.sym)} → TP ${fmtP(sn.tp, d.sym)} · R:R 1:0.5, potřebuje &gt;67% win rate · v testech malých cílů ztrátové</div></div>`;
   }
   const adxLbl = d.a1h.adxV !== null ? d.a1h.adxV.toFixed(0) : '–';
   const adxCls = d.a1h.adxV === null ? '' : d.a1h.adxV >= 25 ? 'pos' : d.a1h.adxV < 20 ? 'warn' : '';
@@ -750,7 +832,7 @@ function buildCard(d) {
     ? ` <span style="color:${d.scoreDelta > 0 ? 'var(--g)' : 'var(--r)'}">${d.scoreDelta > 0 ? '▲' : '▼'} ${Math.abs(d.scoreDelta)}</span>` : '';
   return `<div class="sym-card" onclick="loadCalc('${d.sym}')">
     <div class="sym-hdr">
-      <div><div class="sym-name">${d.sym.replace('/', '')}</div><div style="font-size:10px;color:var(--t2);">Klikni → předvyplnit kalkulátor</div></div>
+      <div><div class="sym-name">${d.sym.replace('/', '')}</div><div style="font-size:10px;color:var(--t2);">${d.src ? escHtml(d.src) + ' · ' : ''}klikni → kalkulátor</div></div>
       <div style="text-align:right;"><div class="sym-price" style="color:${pC}">$${pFmt}</div><div style="font-size:10px;color:${pC};">${d.sig === 'bull' ? '▲ Bullish' : d.sig === 'bear' ? '▼ Bearish' : '→ Neutrál'}</div></div>
     </div>
     <div class="tf-row">
@@ -823,7 +905,7 @@ async function selI(el, sym, pip, contract) {
   const req = ++selReq;
   // Bez API klíče se instrument přepne pro ruční výpočet (dřív se nepřepnul vůbec
   // a kalkulátor dál počítal s kontraktem předchozího instrumentu).
-  if (!API_KEY) {
+  if (!API_KEY && !isBinanceSym(sym)) {
     lastCalcData = null; autoFilled = false; setStopBasis('');
     document.getElementById('calcSrc').textContent = 'ruční zadání (bez API klíče)';
     calc();
@@ -831,7 +913,7 @@ async function selI(el, sym, pip, contract) {
   }
   document.getElementById('calcSrc').textContent = 'načítám cenu…';
   try {
-    const candles = await fetchCandles(sym, '1h', 30);
+    const candles = await fetchCandlesAny(sym, '1h', 30);
     if (req !== selReq || ID.name !== sym) return; // mezitím vybrán jiný instrument
     const price = parseFloat(candles[candles.length - 1].close);
     const atrV = atr(candles, Math.min(14, candles.length - 1));
@@ -1222,7 +1304,7 @@ function renderBots() {
 
 // ─── TABS ─────────────────────────────────────────────────
 const TABS = ['scan', 'bot', 'calc', 'pos', 'jnl', 'exp'];
-const TITLES = { scan: ['MTF Scanner', 'Twelve Data — živá tržní data'], bot: ['Roboti', 'Demo MT5 + opce IBKR — stav z PC'], calc: ['Kalkulátor', 'Výpočet pozice dle ATR a live ceny'], pos: ['Otevřené pozice', 'Sledování a management'], jnl: ['Trading Journal', 'Historie a equity křivka'], exp: ['Export', 'PDF a CSV report'] };
+const TITLES = { scan: ['MTF Scanner', 'Binance + Twelve Data — živá tržní data'], bot: ['Roboti', 'Demo MT5 + opce IBKR — stav z PC'], calc: ['Kalkulátor', 'Výpočet pozice dle ATR a live ceny'], pos: ['Otevřené pozice', 'Sledování a management'], jnl: ['Trading Journal', 'Historie a equity křivka'], exp: ['Export', 'PDF a CSV report'] };
 function swT(t) { TABS.forEach(id => { document.getElementById('tp-' + id).className = 'tp' + (id === t ? ' on' : ''); document.getElementById('nb-' + id).className = 'nb' + (id === t ? ' on' : ''); }); document.getElementById('hT').textContent = TITLES[t][0]; document.getElementById('hS').textContent = TITLES[t][1]; document.getElementById('body').scrollTop = 0; if (t === 'jnl') renderJnl(); if (t === 'exp') updExp(); if (t === 'bot') { renderBots(); if (botCfg.repo && botCfg.token) loadBots(); } }
 function badge() { const bP = document.getElementById('bP'), bJ = document.getElementById('bJ'); if (positions.length) { bP.textContent = positions.length; bP.style.display = 'block'; } else bP.style.display = 'none'; if (journal.length) { bJ.textContent = journal.length; bJ.style.display = 'block'; } else bJ.style.display = 'none'; }
 
@@ -1425,6 +1507,7 @@ function loadLastScanFromStorage() {
     document.getElementById('scanCards').innerHTML = Object.values(lastScan)
       .filter(d => d && d.a1h && d.a4h && d.a1d)
       .map(buildCard).join('');
+    renderSummary();
     log(`Zobrazeny uložené výsledky (${ageTxt}). Klikni ↻ pro aktuální data.`, 'warn');
   } catch (e) { /* poškozená uložená data — appka prostě otevře prázdný scanner */ }
 }
