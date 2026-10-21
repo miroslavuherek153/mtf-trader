@@ -225,6 +225,14 @@ display:flex;background:var(--bg1);flex-shrink:0;
 <button class="pi" data-sym="SPY" onclick="toggleSym(this)">SPY</button>
 </div>
 <div style="font-size:10px;color:var(--t2);margin:-4px 0 8px;">Zlato, krypto a akcie z Binance (bez klíče, za pár sekund) · forex z Twelve Data (klíč 🔑, 8 volání/min)</div>
+<div class="sl" style="margin:2px 0 6px;">Délka obchodu</div>
+<div class="pills" id="modePills">
+<button class="pi on" data-mode="swing" onclick="setMode('swing')">Swing · 1H/4H/1D</button>
+<button class="pi" data-mode="hod" onclick="setMode('hod')">Scalp hodiny · 15m/1H/4H</button>
+<button class="pi" data-mode="min" onclick="setMode('min')">Scalp minuty · 1m/5m/15m</button>
+</div>
+<div id="modeHint" style="font-size:10px;color:var(--t2);margin:-4px 0 6px;"></div>
+<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);margin-bottom:8px;"><input type="checkbox" id="autoScan" onchange="setAuto(this.checked)"><span id="autoLbl">Obnovovat samo</span></label>
 <div class="sym-card" id="goldCard" style="cursor:default;"><div class="sl">Zlato · XAU/USD</div><div style="font-size:12px;color:var(--t2);">Načítám…</div></div>
 <div id="scanSummary"></div>
 <div class="log-box" id="logBox">Připraven. Stiskni ↻ Načíst data.
@@ -235,7 +243,8 @@ display:flex;background:var(--bg1);flex-shrink:0;
 • MTF skener (trend 1D/4H/1H + vstup) byl v testech na historii mírně ztrátový (−0,01 až −0,4 R na obchod).<br>
 • Filtr podle toku objednávek z Binance ho nezlepšil (BTC/ETH 2020–23).<br>
 • „Sniper“ s cílem 0,5× ATR a stopem 1× ATR potřebuje přes 67 % úspěšných obchodů; podobný test malých cílů na zlatě dal 56 % proti potřebným 77 %.<br>
-• Skóre ukazuje, kam trh míří teď, ne že tam půjde. Rozhoduje riziko: 1 % na obchod, denní limit.
+• Skalpování na 1–5 minut na zlatě (vstupy podle linií, malý stop) dalo po spreadu kolem −0,45 R na obchod – spread je proti malému cíli velký.<br>
+• Skóre ukazuje, kam trh míří teď, ne že tam půjde. Rozhoduje riziko: 1 % na obchod, denní limit. Objem v kartě je spočítaný právě na to.
 </div></details>
 </div>
 
@@ -518,7 +527,51 @@ async function fetchCandles(symbol, interval, outputsize = 55) {
 // XAUUSDT bývá o ~5–8 USD výš než spot u brokera; akciové kontrakty se obchodují 24/7.
 const BINANCE = { 'XAU/USD': 'XAUUSDT', 'BTC/USD': 'BTCUSDT', 'ETH/USD': 'ETHUSDT', 'AAPL': 'AAPLUSDT',
   'NVDA': 'NVDAUSDT', 'TSLA': 'TSLAUSDT', 'SPY': 'SPYUSDT' };
-const BN_IV = { '1h': '1h', '4h': '4h', '1day': '1d' };
+const BN_IV = { '1min': '1m', '5min': '5m', '15min': '15m', '1h': '1h', '4h': '4h', '1day': '1d' };
+
+// Režimy scanneru podle délky obchodu. Názvy rámců jsou intervaly Twelve Data (Binance přes BN_IV).
+const MODES = {
+  swing: { name: 'Swing', tfs: ['1h', '4h', '1day'], labels: ['1H', '4H', '1D'], auto: 300 },
+  hod: { name: 'Scalp hodiny', tfs: ['15min', '1h', '4h'], labels: ['15m', '1H', '4H'], auto: 120 },
+  min: { name: 'Scalp minuty', tfs: ['1min', '5min', '15min'], labels: ['1m', '5m', '15m'], auto: 30 },
+};
+let scanMode = 'swing';
+try { if (MODES[localStorage.getItem('mtf_mode')]) scanMode = localStorage.getItem('mtf_mode'); } catch (e) {}
+let autoTimer = null;
+function setMode(m) {
+  if (scanning || !MODES[m]) return;
+  scanMode = m;
+  try { localStorage.setItem('mtf_mode', m); } catch (e) {}
+  document.querySelectorAll('#modePills .pi').forEach(p => p.classList.toggle('on', p.dataset.mode === m));
+  document.getElementById('modeHint').textContent = m === 'min'
+    ? 'Obchody na 1–2 minuty: směr z 1m/5m/15m, stop podle 1m. Spread zlata (~0,2–0,4 b.) bere velkou část malého cíle.'
+    : m === 'hod' ? 'Obchody na 1–2 hodiny: směr z 15m/1H/4H, stop podle 15m.' : 'Obchody na hodiny až dny: směr z 1H/4H/1D, stop podle 1H.';
+  lastScan = {}; document.getElementById('scanCards').innerHTML = ''; document.getElementById('scanSummary').innerHTML = '';
+  setAuto(document.getElementById('autoScan').checked);
+}
+function setAuto(on) {
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+  const lbl = document.getElementById('autoLbl');
+  if (lbl) lbl.textContent = `Obnovovat samo (${MODES[scanMode].auto >= 60 ? MODES[scanMode].auto / 60 + ' min' : MODES[scanMode].auto + ' s'}, jen Binance)`;
+  if (on) autoTimer = setInterval(() => { if (!document.hidden && !scanning) startScan(true); }, MODES[scanMode].auto * 1000);
+}
+
+// Objem na zvolené riziko z Kalkulátoru (zůstatek × riziko %) a stop ze signálu
+function contractOf(sym) { return sym.includes('XAU') ? 100 : (sym.includes('BTC') || sym.includes('ETH')) ? 1 : isForexSym(sym) ? 100000 : 1; }
+function sizeBox(d) {
+  if (!d.stops) return '';
+  const bal = parseFloat(document.getElementById('bal')?.value) || 0, rp = parseFloat(document.getElementById('rp')?.value) || 1;
+  const slDist = Math.abs(d.price - d.stops.sl), tpDist = Math.abs(d.stops.tp - d.price);
+  if (!bal || !slDist) return '';
+  const riskUsd = bal * rp / 100, units = riskUsd / slDist, lots = units / contractOf(d.sym);
+  const unitTxt = d.sym.includes('XAU') ? `${units.toFixed(1)} oz` : isForexSym(d.sym) ? `${Math.round(units)} jedn.` : `${units < 10 ? units.toFixed(3) : units.toFixed(1)} ks`;
+  const per = d.sym.includes('XAU') ? ` · 1 bod = ${(units).toFixed(1)} $` : '';
+  const spreadWarn = d.sym.includes('XAU') && d.mode === 'min'
+    ? `<div style="margin-top:3px;">Spread ~0,3 b. = ${Math.round(0.3 / tpDist * 100)} % cíle (${fmtP(tpDist, d.sym)} b.)</div>` : '';
+  return `<div class="sig-box" style="margin-top:6px;background:var(--bg2);color:var(--t1);"><div class="sig-title">⚖️ Objem na ${rp} % rizika (${fmtP(riskUsd, 'X')} $ z ${Math.round(bal)} $)</div>
+    <div style="font-size:12px;"><b>${lots < 0.01 ? lots.toFixed(4) : lots.toFixed(2)} lotu = ${unitTxt}</b> při stopu ${fmtP(slDist, d.sym)}${per}</div>${spreadWarn}
+    <div style="font-size:10px;color:var(--t2);margin-top:2px;">Zůstatek a % rizika se berou z Kalkulátoru.</div></div>`;
+}
 async function fetchBinance(sym, interval, n) {
   const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${BINANCE[sym]}&interval=${BN_IV[interval]}&limit=${n}`;
   const ctrl = new AbortController();
@@ -708,14 +761,15 @@ function analyzeTF(candles) {
 // Twelve Data free plánu (8 volání/min). Původních 900ms limit reálně porušovalo.
 const API_DELAY = 8000;
 
-async function startScan() {
+async function startScan(auto = false) {
   if (scanning) return;
-  loadGold(); // karta Zlato se obnoví i bez API klíče
+  if (!auto) loadGold(); // karta Zlato se obnoví i bez API klíče
   // Kopie seznamu: přepnutí instrumentu během scanu dřív měnilo rozběhnutou smyčku.
   const all = [...activeSyms];
   const tdAll = all.filter(s => !isBinanceSym(s));
-  if (tdAll.length && !API_KEY) log('Forex potřebuje Twelve Data klíč (🔑) — skenuji jen instrumenty z Binance.', 'warn');
-  const syms = API_KEY ? all : all.filter(isBinanceSym);
+  if (tdAll.length && !API_KEY && !auto) log('Forex potřebuje Twelve Data klíč (🔑) — skenuji jen instrumenty z Binance.', 'warn');
+  // automatické obnovování jen z Binance - forex by vyčerpal limit Twelve Data (800 volání/den)
+  const syms = (API_KEY && !auto) ? all : all.filter(isBinanceSym);
   if (!syms.length) { ensureApiKey(); return; }
   scanning = true;
   const prevScan = { ...lastScan }; // pro porovnání skóre s minulým scanem
@@ -732,7 +786,7 @@ async function startScan() {
     document.getElementById('scanCards').appendChild(ph);
   }
   const bn = syms.filter(isBinanceSym), td = syms.filter(s => !isBinanceSym(s));
-  log(`Scan ${syms.length} instrumentů (1H + 4H + 1D): ${bn.length} z Binance najednou` + (td.length ? `, ${td.length} z Twelve Data po 8 s (limit 8 volání/min)` : '') + '…');
+  log(`Scan ${syms.length} instrumentů (${MODES[scanMode].name}: ${MODES[scanMode].labels.join(' + ')}): ${bn.length} z Binance najednou` + (td.length ? `, ${td.length} z Twelve Data po 8 s (limit 8 volání/min)` : '') + '…');
   await Promise.all(bn.map(sym => scanOne(sym, prevScan, false)));
   for (const sym of td) {
     await scanOne(sym, prevScan, true);
@@ -748,18 +802,20 @@ async function startScan() {
 async function scanOne(sym, prevScan, throttle) {
     const short = sym.replace('/', '');
     try {
+      // c1h/c4h/c1d = nejnižší/střední/nejvyšší rámec zvoleného režimu (swing 1H/4H/1D, hodiny 15m/1H/4H, minuty 1m/5m/15m)
+      const M = MODES[scanMode];
       let c1h, c4h, c1d;
       if (throttle) {                                    // Twelve Data: sekvenčně kvůli limitu free plánu
-        log(`${short}: načítám 1H…`);
-        c1h = await fetchCandles(sym, '1h', 55);
+        log(`${short}: načítám ${M.labels[0]}…`);
+        c1h = await fetchCandles(sym, M.tfs[0], 55);
         await delay(API_DELAY);
-        log(`${short}: načítám 4H…`);
-        c4h = await fetchCandles(sym, '4h', 55);
+        log(`${short}: načítám ${M.labels[1]}…`);
+        c4h = await fetchCandles(sym, M.tfs[1], 55);
         await delay(API_DELAY);
-        log(`${short}: načítám 1D…`);
-        c1d = await fetchCandles(sym, '1day', 55);
+        log(`${short}: načítám ${M.labels[2]}…`);
+        c1d = await fetchCandles(sym, M.tfs[2], 55);
       } else {
-        [c1h, c4h, c1d] = await Promise.all([fetchBinance(sym, '1h', 55), fetchBinance(sym, '4h', 55), fetchBinance(sym, '1day', 55)]);
+        [c1h, c4h, c1d] = await Promise.all(M.tfs.map(tf => fetchBinance(sym, tf, 55)));
       }
       const a1h = analyzeTF(c1h), a4h = analyzeTF(c4h), a1d = analyzeTF(c1d);
       const price = a1h.last;
@@ -774,7 +830,8 @@ async function scanOne(sym, prevScan, throttle) {
       const prevOverall = prevScan[sym] ? prevScan[sym].overall : null;
       const scoreDelta = prevOverall !== null ? overall - prevOverall : null;
       log(`${short}: ✓ skóre ${overall} → ${sig.toUpperCase()}`, 'ok');
-      const d = { sym, price, a1h, a4h, a1d, overall, sig, atrV, stops, confluent, c1h, scoreDelta, src: srcName(sym) };
+      const d = { sym, price, a1h, a4h, a1d, overall, sig, atrV, stops, confluent, c1h, scoreDelta, src: srcName(sym),
+                  mode: scanMode, labels: M.labels };
       lastScan[sym] = d;
       const card = document.getElementById('lc-' + short);
       if (card) card.outerHTML = buildCard(d);
@@ -793,8 +850,9 @@ function renderSummary() {
   if (!rows.length) { box.innerHTML = ''; return; }
   const arrow = t => t === 'bull' ? '<span class="sm-up">▲</span>' : t === 'bear' ? '<span class="sm-dn">▼</span>' : '<span class="sm-n">→</span>';
   const sigTxt = d => d.sig === 'bull' ? '<span class="sm-up">LONG</span>' : d.sig === 'bear' ? '<span class="sm-dn">SHORT</span>' : '<span class="sm-n">čekat</span>';
-  box.innerHTML = `<div class="card sm-card"><div class="sl" style="margin-bottom:6px;">Přehled · ${new Date().toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}</div>
-  <table class="sm-t"><thead><tr><th>Instrument</th><th>Cena</th><th>1D</th><th>4H</th><th>1H</th><th>Skóre</th><th>Signál</th></tr></thead><tbody>
+  const L = rows[0].labels || ['1H', '4H', '1D'];
+  box.innerHTML = `<div class="card sm-card"><div class="sl" style="margin-bottom:6px;">Přehled · ${MODES[rows[0].mode || 'swing'].name} · ${new Date().toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+  <table class="sm-t"><thead><tr><th>Instrument</th><th>Cena</th><th>${L[2]}</th><th>${L[1]}</th><th>${L[0]}</th><th>Skóre</th><th>Signál</th></tr></thead><tbody>
   ${rows.map(d => `<tr onclick="loadCalc('${d.sym}')"><td><b>${d.sym.replace('/', '')}</b>${d.confluent ? '' : ' <span title="rámce si neodpovídají" class="sm-n">·</span>'}</td>
     <td>${fmtP(d.price, d.sym)}</td><td>${arrow(d.a1d.trend)}</td><td>${arrow(d.a4h.trend)}</td><td>${arrow(d.a1h.trend)}</td>
     <td><div class="sm-bar"><div style="width:${d.overall}%;background:${d.sig === 'bull' ? 'var(--g)' : d.sig === 'bear' ? 'var(--r)' : 'var(--t3)'}"></div></div>${d.overall}</td>
@@ -836,9 +894,9 @@ function buildCard(d) {
       <div style="text-align:right;"><div class="sym-price" style="color:${pC}">$${pFmt}</div><div style="font-size:10px;color:${pC};">${d.sig === 'bull' ? '▲ Bullish' : d.sig === 'bear' ? '▼ Bearish' : '→ Neutrál'}</div></div>
     </div>
     <div class="tf-row">
-      <div class="tf-b ${d.a1h.trend}"><span class="tf-lbl">1H</span><span class="tf-val">${d.a1h.label}</span></div>
-      <div class="tf-b ${d.a4h.trend}"><span class="tf-lbl">4H</span><span class="tf-val">${d.a4h.label}</span></div>
-      <div class="tf-b ${d.a1d.trend}"><span class="tf-lbl">1D</span><span class="tf-val">${d.a1d.label}</span></div>
+      <div class="tf-b ${d.a1h.trend}"><span class="tf-lbl">${(d.labels || ['1H'])[0]}</span><span class="tf-val">${d.a1h.label}</span></div>
+      <div class="tf-b ${d.a4h.trend}"><span class="tf-lbl">${(d.labels || ['', '4H'])[1]}</span><span class="tf-val">${d.a4h.label}</span></div>
+      <div class="tf-b ${d.a1d.trend}"><span class="tf-lbl">${(d.labels || ['', '', '1D'])[2]}</span><span class="tf-val">${d.a1d.label}</span></div>
     </div>
     <div class="ind-row">
       ${d.a1h.rsiV !== null ? `<span class="ind ${d.a1h.rsiV > 60 ? 'pos' : d.a1h.rsiV < 40 ? 'neg' : ''}">RSI ${d.a1h.rsiV.toFixed(0)}</span>` : ''}
@@ -853,6 +911,7 @@ function buildCard(d) {
       <div class="score-bar"><div class="score-fill" style="width:${d.overall}%;background:${d.sig === 'bull' ? 'var(--g)' : d.sig === 'bear' ? 'var(--r)' : 'var(--t2)'}"></div></div>
     </div>
     <div class="sig-box ${d.sig}"><div class="sig-title">${sigIcon}</div><div style="font-size:11px;">${sigTxt}</div></div>
+    ${sizeBox(d)}
     ${sniperTxt}
   </div>`;
 }
@@ -1574,6 +1633,15 @@ function useGoldInCalc() {
 }
 loadGold();
 
+// Režim scanneru z minula (bez mazání uložených výsledků)
+(function initModeUI() {
+  document.querySelectorAll('#modePills .pi').forEach(p => p.classList.toggle('on', p.dataset.mode === scanMode));
+  const h = document.getElementById('modeHint');
+  if (h) h.textContent = scanMode === 'min'
+    ? 'Obchody na 1–2 minuty: směr z 1m/5m/15m, stop podle 1m. Spread zlata (~0,2–0,4 b.) bere velkou část malého cíle.'
+    : scanMode === 'hod' ? 'Obchody na 1–2 hodiny: směr z 15m/1H/4H, stop podle 15m.' : 'Obchody na hodiny až dny: směr z 1H/4H/1D, stop podle 1H.';
+  setAuto(false);
+})();
 loadLastScanFromStorage();
 
 // Nastavení záložky Roboti z odkazu / QR kódu (#cockpit=repo,token). Část za # se neposílá
