@@ -640,8 +640,29 @@ async function fetchLevels(sym) {
   const [d1, h4, h1] = await Promise.all([fetchBinance(sym, '1day', 70), fetchBinance(sym, '4h', 6), fetchBinance(sym, '1h', 60)]);
   return computeLevels(d1, h4, h1, Date.now());
 }
+// ─── OPČNÍ MAPA (data/opce.json skládá PC 2× denně z Yahoo: opcni_mapa.py) ───
+let OPCE = null;
+async function loadOpce() {
+  try { const r = await fetch('data/opce.json?t=' + Date.now(), { cache: 'no-store' }); if (r.ok) OPCE = await r.json(); } catch (e) { /* bez mapy */ }
+}
+const OPCE_KEY = { 'XAU/USD': 'XAU', 'AAPL': 'AAPL', 'NVDA': 'NVDA', 'TSLA': 'TSLA', 'SPY': 'SPY' };
+function optLevels(d) {
+  const o = OPCE && OPCE.tickers && OPCE.tickers[OPCE_KEY[d.sym]];
+  if (!o) return [];
+  const exp = o.near_exp ? o.near_exp.slice(8, 10) + '.' + o.near_exp.slice(5, 7) + '.' : '';
+  const z = d.sym === 'XAU/USD' ? ' (z GLD)' : '';
+  const out = [];
+  if (o.call_wall) out.push({ name: `Opce: Call wall${z} · OI ${Math.round(o.call_wall_oi / 1000)}k`, p: o.call_wall, opt: 1 });
+  if (o.put_wall) out.push({ name: `Opce: Put wall${z} · OI ${Math.round(o.put_wall_oi / 1000)}k`, p: o.put_wall, opt: 1 });
+  if (o.max_pain) out.push({ name: `Opce: Max pain ${exp}${z}`, p: o.max_pain, opt: 1 });
+  if (o.top_call_vol) out.push({ name: `Opce: Nejvíc callů ${exp}${z}`, p: o.top_call_vol, opt: 1 });
+  if (o.top_put_vol) out.push({ name: `Opce: Nejvíc putů ${exp}${z}`, p: o.top_put_vol, opt: 1 });
+  return out;
+}
 function levelsBox(d) {
-  if (!d.levels || !d.levels.length) return isBinanceSym(d.sym) ? '' : '<div style="font-size:10px;color:var(--t2);margin-top:6px;">Klíčové úrovně jen pro instrumenty z Binance.</div>';
+  const ol = optLevels(d);
+  if ((!d.levels || !d.levels.length) && !ol.length) return isBinanceSym(d.sym) ? '' : '<div style="font-size:10px;color:var(--t2);margin-top:6px;">Klíčové úrovně jen pro instrumenty z Binance.</div>';
+  d = { ...d, levels: [...(d.levels || []), ...ol] };
   const p = d.price, atrV = d.atrV || 0;
   const above = d.levels.filter(l => l.p > p).sort((a, b) => a.p - b.p), below = d.levels.filter(l => l.p <= p).sort((a, b) => b.p - a.p);
   const row = (l, near) => `<div class="lv-row${near ? ' lv-near' : ''}"><span>${l.name}</span><span>${fmtP(l.p, d.sym)} <span class="lv-d">${l.p > p ? '+' : ''}${fmtP(l.p - p, d.sym)}</span></span></div>`;
@@ -659,7 +680,7 @@ function levelsBox(d) {
     <div class="lv-row lv-px"><span>Cena</span><span>${fmtP(p, d.sym)}</span></div>
     ${below.map((l, i) => row(l, i === 0)).join('')}
     ${warn.map(w => `<div class="lv-warn">⚠️ ${w}</div>`).join('')}
-    <div style="font-size:10px;color:var(--t2);margin-top:4px;">Mapa, ne signál: kde se cena často zastaví nebo zrychlí. Seance v UTC (Asie 0–7, Londýn 7–13, NY 13–21).</div></details>`;
+    <div style="font-size:10px;color:var(--t2);margin-top:4px;">Mapa, ne signál: kde se cena často zastaví nebo zrychlí. Seance v UTC (Asie 0–7, Londýn 7–13, NY 13–21).${ol.length ? ` Opce: = opční mapa (Yahoo, ${escHtml((OPCE.time || '').slice(0, 16).replace('T', ' '))} UTC${OPCE_KEY[d.sym] && OPCE.tickers[OPCE_KEY[d.sym]] ? ', put/call OI ' + OPCE.tickers[OPCE_KEY[d.sym]].pcr_oi : ''}): call wall = odpor, put wall = podpora, max pain = magnet v den expirace (ověřujeme dopředu).` : ''}</div></details>`;
 }
 
 // ─── FORMÁTOVÁNÍ CEN ──────────────────────────────────────
@@ -858,6 +879,7 @@ async function startScan(auto = false) {
   }
   const bn = syms.filter(isBinanceSym), td = syms.filter(s => !isBinanceSym(s));
   log(`Scan ${syms.length} instrumentů (${MODES[scanMode].name}: ${MODES[scanMode].labels.join(' + ')}): ${bn.length} z Binance najednou` + (td.length ? `, ${td.length} z Twelve Data po 8 s (limit 8 volání/min)` : '') + '…');
+  await loadOpce();
   await Promise.all(bn.map(sym => scanOne(sym, prevScan, false)));
   for (const sym of td) {
     await scanOne(sym, prevScan, true);
