@@ -124,6 +124,14 @@ display:flex;background:var(--bg1);flex-shrink:0;
 .sym-price{font-size:16px;font-weight:600;}
 .tf-row{display:flex;gap:5px;margin-bottom:9px;}
 .sm-card{padding:11px 12px;}
+.lv-box{margin-top:8px;background:var(--bg2);border-radius:10px;padding:7px 9px;font-size:11px;}
+.lv-box summary{cursor:pointer;font-weight:600;color:var(--t1);}
+.lv-row{display:flex;justify-content:space-between;padding:2px 0;color:var(--t2);font-variant-numeric:tabular-nums;}
+.lv-near{color:var(--t1);font-weight:700;}
+.lv-px{color:var(--a);font-weight:700;border-top:1px dashed var(--t3);border-bottom:1px dashed var(--t3);margin:2px 0;}
+.lv-d{color:var(--t3);font-weight:400;margin-left:4px;}
+.be-line{margin-top:7px;font-size:11px;color:var(--t2);background:var(--bg2);border-radius:8px;padding:5px 8px;}
+.lv-warn{color:var(--alt);background:var(--al);border-radius:7px;padding:4px 6px;margin-top:5px;}
 .sm-t{width:100%;border-collapse:collapse;font-size:12px;}
 .sm-t th{font-size:9px;font-weight:600;color:var(--t2);text-align:left;padding:3px 4px;text-transform:uppercase;letter-spacing:.03em;}
 .sm-t td{padding:6px 4px;border-top:1px solid var(--bg2);font-variant-numeric:tabular-nums;}
@@ -591,6 +599,69 @@ async function fetchCandlesAny(sym, interval, n = 55) {
 }
 const srcName = sym => isBinanceSym(sym) ? 'Binance ' + BINANCE[sym] : 'Twelve Data';
 
+// ─── KLÍČOVÉ ÚROVNĚ („liquidity pool“) ─────────────────────
+// High/low předchozí seance, dne, týdne, měsíce, poslední uzavřené 4H svíčky a posledního swingu (fraktál ±3 na 1H).
+// Jen mapa trhu: jako vstupní signál (průraz předchozí svíčky, vybrání likvidity) v testech výhodu nedaly.
+// Seance v UTC: Asie 0–7, Londýn 7–13, New York 13–21.
+function computeLevels(d1, h4, h1, nowMs) {
+  const num = c => ({ t: Date.parse(c.datetime), h: +c.high, l: +c.low });
+  const D = d1.map(num), H4 = h4.map(num), H1 = h1.map(num);
+  const out = [];
+  const add = (name, hi, lo) => { if (isFinite(hi)) out.push({ name: name + ' high', p: hi, side: 1 }); if (isFinite(lo)) out.push({ name: name + ' low', p: lo, side: -1 }); };
+  const day0 = Date.UTC(new Date(nowMs).getUTCFullYear(), new Date(nowMs).getUTCMonth(), new Date(nowMs).getUTCDate());
+  const pd = D.filter(c => c.t < day0).pop();
+  if (pd) add('Předch. den', pd.h, pd.l);
+  const dow = (new Date(day0).getUTCDay() + 6) % 7, wk0 = day0 - dow * 864e5, pw0 = wk0 - 7 * 864e5;
+  const W = D.filter(c => c.t >= pw0 && c.t < wk0);
+  if (W.length) add('Předch. týden', Math.max(...W.map(c => c.h)), Math.min(...W.map(c => c.l)));
+  const n = new Date(nowMs), m0 = Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), 1), pm0 = Date.UTC(n.getUTCFullYear(), n.getUTCMonth() - 1, 1);
+  const Mo = D.filter(c => c.t >= pm0 && c.t < m0);
+  if (Mo.length) add('Předch. měsíc', Math.max(...Mo.map(c => c.h)), Math.min(...Mo.map(c => c.l)));
+  const h4c = H4.filter(c => c.t + 4 * 36e5 <= nowMs).pop();
+  if (h4c) add('Posl. 4H svíčka', h4c.h, h4c.l);
+  const S = [['Asie', 0, 7], ['Londýn', 7, 13], ['New York', 13, 21]];
+  let best = null;
+  for (const back of [0, 1]) for (const [nm, a, b] of S) {
+    const s = day0 - back * 864e5 + a * 36e5, e = day0 - back * 864e5 + b * 36e5;
+    if (e <= nowMs && (!best || e > best.e)) best = { nm: nm + (back ? ' (včera)' : ''), s, e };
+  }
+  if (best) { const X = H1.filter(c => c.t >= best.s && c.t < best.e); if (X.length) add('Seance ' + best.nm, Math.max(...X.map(c => c.h)), Math.min(...X.map(c => c.l))); }
+  const k = 3, cl = H1.filter(c => c.t + 36e5 <= nowMs);
+  let sh = null, sl = null;
+  for (let i = k; i < cl.length - k; i++) {
+    const w = cl.slice(i - k, i + k + 1);
+    if (cl[i].h === Math.max(...w.map(c => c.h))) sh = cl[i].h;
+    if (cl[i].l === Math.min(...w.map(c => c.l))) sl = cl[i].l;
+  }
+  add('Swing 1H', sh, sl);
+  return out;
+}
+async function fetchLevels(sym) {
+  const [d1, h4, h1] = await Promise.all([fetchBinance(sym, '1day', 70), fetchBinance(sym, '4h', 6), fetchBinance(sym, '1h', 60)]);
+  return computeLevels(d1, h4, h1, Date.now());
+}
+function levelsBox(d) {
+  if (!d.levels || !d.levels.length) return isBinanceSym(d.sym) ? '' : '<div style="font-size:10px;color:var(--t2);margin-top:6px;">Klíčové úrovně jen pro instrumenty z Binance.</div>';
+  const p = d.price, atrV = d.atrV || 0;
+  const above = d.levels.filter(l => l.p > p).sort((a, b) => a.p - b.p), below = d.levels.filter(l => l.p <= p).sort((a, b) => b.p - a.p);
+  const row = (l, near) => `<div class="lv-row${near ? ' lv-near' : ''}"><span>${l.name}</span><span>${fmtP(l.p, d.sym)} <span class="lv-d">${l.p > p ? '+' : ''}${fmtP(l.p - p, d.sym)}</span></span></div>`;
+  const warn = [];
+  if (d.stops) {
+    const isL = d.sig === 'bull', sl = d.stops.sl, tp = d.stops.tp;
+    // stop těsně ZA úrovní (méně než 0,3× ATR): právě tam trh rád „vybere“ stopy
+    const lv = d.levels.find(l => (isL ? (l.p > sl && l.p < p && l.p - sl < 0.3 * atrV) : (l.p < sl && l.p > p && sl - l.p < 0.3 * atrV)));
+    if (lv) warn.push(`SL těsně za úrovní „${lv.name}“ ${fmtP(lv.p, d.sym)} – tam se stopy často vybírají; zvaž ho dát dál, nebo menší objem.`);
+    const ob = d.levels.filter(l => isL ? (l.p > p && l.p < tp) : (l.p < p && l.p > tp)).sort((a, b) => Math.abs(a.p - p) - Math.abs(b.p - p))[0];
+    if (ob) warn.push(`Mezi vstupem a cílem leží „${ob.name}“ ${fmtP(ob.p, d.sym)} – cena se tam může zastavit.`);
+  }
+  return `<details class="lv-box" onclick="event.stopPropagation()"><summary>📍 Klíčové úrovně · nad ${above[0] ? fmtP(above[0].p - p, d.sym) : '–'} · pod ${below[0] ? fmtP(p - below[0].p, d.sym) : '–'}</summary>
+    ${above.slice().reverse().map((l, i, a) => row(l, i === a.length - 1)).join('')}
+    <div class="lv-row lv-px"><span>Cena</span><span>${fmtP(p, d.sym)}</span></div>
+    ${below.map((l, i) => row(l, i === 0)).join('')}
+    ${warn.map(w => `<div class="lv-warn">⚠️ ${w}</div>`).join('')}
+    <div style="font-size:10px;color:var(--t2);margin-top:4px;">Mapa, ne signál: kde se cena často zastaví nebo zrychlí. Seance v UTC (Asie 0–7, Londýn 7–13, NY 13–21).</div></details>`;
+}
+
 // ─── FORMÁTOVÁNÍ CEN ──────────────────────────────────────
 // Forex páry mají 5 desetinných míst (JPY 3) — dřív se všechny ceny (vstup, SL,
 // TP) zaokrouhlovaly na 2 místa, takže u EURUSD vyšel vstup 1.09 a SL 1.08
@@ -830,8 +901,10 @@ async function scanOne(sym, prevScan, throttle) {
       const prevOverall = prevScan[sym] ? prevScan[sym].overall : null;
       const scoreDelta = prevOverall !== null ? overall - prevOverall : null;
       log(`${short}: ✓ skóre ${overall} → ${sig.toUpperCase()}`, 'ok');
+      let levels = null;
+      if (!throttle) { try { levels = await fetchLevels(sym); } catch (e) { /* úrovně jsou jen doplněk */ } }
       const d = { sym, price, a1h, a4h, a1d, overall, sig, atrV, stops, confluent, c1h, scoreDelta, src: srcName(sym),
-                  mode: scanMode, labels: M.labels };
+                  mode: scanMode, labels: M.labels, levels };
       lastScan[sym] = d;
       const card = document.getElementById('lc-' + short);
       if (card) card.outerHTML = buildCard(d);
@@ -912,6 +985,7 @@ function buildCard(d) {
     </div>
     <div class="sig-box ${d.sig}"><div class="sig-title">${sigIcon}</div><div style="font-size:11px;">${sigTxt}</div></div>
     ${sizeBox(d)}
+    ${levelsBox(d)}
     ${sniperTxt}
   </div>`;
 }
@@ -1185,7 +1259,34 @@ function renderPos() {
       <span style="color:var(--r);">-$${p.risk.toFixed(2)}</span>
       ${p.profit > 0 ? `<span style="color:var(--g);">+$${p.profit.toFixed(2)}</span>` : ''}
       ${p.rr > 0 ? `<span>R:R 1:${p.rr.toFixed(2)}</span>` : ''}
-    </div></div>`).join('');
+    </div>${beLine(p)}</div>`).join('');
+  posLive();
+}
+
+// Break-even: po zisku +1 R posunout SL na vstup ("ze zisku se nesmí stát ztráta")
+function beLevel(p) {
+  const e = parseFloat(p.entry), s = parseFloat(p.sl);
+  if (!isFinite(e) || !isFinite(s) || e === s) return null;
+  return p.dir === 'long' ? e + (e - s) : e - (s - e);
+}
+function beLine(p) {
+  const b = beLevel(p);
+  if (b === null) return '';
+  return `<div class="be-line" id="be-${p.id}">🛡️ Při ceně <b>${fmtP(b, p.name)}</b> (+1 R) posuň SL na vstup ${p.entry}${isBinanceSym(p.name) ? ' · <span class="be-live">kontroluji cenu…</span>' : ''}</div>`;
+}
+async function posLive() {
+  for (const p of positions) {
+    if (!isBinanceSym(p.name) || beLevel(p) === null) continue;
+    try {
+      const k = await fetchBinance(p.name, '1min', 1);
+      const px = +k[k.length - 1].close, e = parseFloat(p.entry), s = parseFloat(p.sl);
+      const r = (p.dir === 'long' ? px - e : e - px) / Math.abs(e - s);
+      const el = document.querySelector(`#be-${p.id} .be-live`);
+      if (!el) continue;
+      el.innerHTML = r >= 1 ? `<span style="color:var(--g);font-weight:700;">✅ teď ${fmtP(px, p.name)} = +${r.toFixed(1)} R – posuň SL na vstup!</span>`
+        : `teď ${fmtP(px, p.name)} = ${r >= 0 ? '+' : ''}${r.toFixed(2)} R`;
+    } catch (e) { /* bez ceny jen statická úroveň */ }
+  }
 }
 
 function renderJnl() {
