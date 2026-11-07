@@ -274,7 +274,7 @@ display:flex;background:var(--bg1);flex-shrink:0;
 <div class="fi"><label>Zůstatek ($)</label><input type="number" id="bal" value="1000" min="0" step="1" inputmode="decimal" oninput="calc()"></div>
 <div class="fi"><label>Riziko (%)</label><input type="number" id="rp" value="1" min="0.1" max="10" step="0.1" inputmode="decimal" oninput="calc()"></div>
 </div>
-<div class="fi"><label>Denní limit ztráty (%)</label><input type="number" id="dlim" value="3" min="0.5" step="0.5" inputmode="decimal" oninput="chkLim()"></div>
+<div class="fi"><label>Denní limit ztráty (%)</label><input type="number" id="dlim" value="2" min="0.5" step="0.5" inputmode="decimal" oninput="chkLim()"></div>
 </div>
 <div class="card">
 <div class="sl">Instrument <span id="calcSrc" style="color:var(--g);font-weight:400;font-size:10px;"></span></div>
@@ -299,6 +299,7 @@ display:flex;background:var(--bg1);flex-shrink:0;
 <div class="fi"><label>Take Profit</label><input type="number" id="tp2" value="" step="any" inputmode="decimal" oninput="autoFilled=false;clearStopBasis();calc()"></div>
 </div>
 <div id="stopBasis" style="font-size:10px;color:var(--t2);margin-top:-4px;"></div>
+<div class="fi" style="margin-top:8px;margin-bottom:0;"><label>Můj objem (loty) — nepovinné: vyplň, když už máš pozici otevřenou nebo chceš jiný objem; spočítá skutečné riziko</label><input type="number" id="myLots" value="" min="0" step="0.01" inputmode="decimal" oninput="calc()" placeholder="prázdné = doporučený objem"></div>
 </div>
 <div class="wn" id="wn"></div>
 <div class="res-box">
@@ -374,8 +375,9 @@ display:flex;background:var(--bg1);flex-shrink:0;
 <div class="tip-box">
 <div class="sl" style="margin-bottom:6px;">Pravidla risk managementu</div>
 <div class="tip-row"><i class="ti ti-check"></i>Vždy nastav SL před otevřením pozice</div>
-<div class="tip-row"><i class="ti ti-check"></i>Nikdy neriskuj více než 2 % na jeden obchod</div>
-<div class="tip-row"><i class="ti ti-check"></i>Celkové riziko všech pozic udržuj pod 6 % účtu</div>
+<div class="tip-row"><i class="ti ti-check"></i>Riskuj 1 % na obchod, nikdy víc než 2 %</div>
+<div class="tip-row"><i class="ti ti-check"></i>BTC + ETH (nebo několik akcií USA) stejným směrem = jedna sázka, sečti jejich riziko</div>
+<div class="tip-row"><i class="ti ti-check"></i>Součet rizika otevřených pozic drž pod denním limitem (2 %) — při otočce trhu padnou stopy najednou</div>
 <div class="tip-row"><i class="ti ti-check"></i>Hledej R:R minimálně 1:1,5</div>
 <div class="tip-row"><i class="ti ti-check"></i>Po dosažení denního limitu přestaň obchodovat</div>
 </div>
@@ -564,6 +566,15 @@ function setAuto(on) {
   if (on) autoTimer = setInterval(() => { if (!document.hidden && !scanning) startScan(true); }, MODES[scanMode].auto * 1000);
 }
 
+// Skupiny trhů, které se hýbou spolu: pozice stejným směrem v jedné skupině = jedna sázka
+function corrGroup(sym) { return /BTC|ETH/.test(sym) ? 'krypto' : ['AAPL', 'NVDA', 'TSLA', 'SPY'].includes(sym) ? 'akcie USA' : sym; }
+function settingsSaved() { try { return !!localStorage.getItem('mtf_settings'); } catch (e) { return true; } }
+// Karty scanneru po změně zůstatku/rizika v Kalkulátoru přepočítat (objem v kartě se jinak neměnil)
+function refreshScanCards() {
+  if (scanning) return;
+  const cards = Object.values(lastScan).filter(d => d && d.a1h && d.a4h && d.a1d && activeSyms.includes(d.sym));
+  if (cards.length) document.getElementById('scanCards').innerHTML = cards.map(buildCard).join('');
+}
 // Objem na zvolené riziko z Kalkulátoru (zůstatek × riziko %) a stop ze signálu
 function contractOf(sym) { return sym.includes('XAU') ? 100 : (sym.includes('BTC') || sym.includes('ETH')) ? 1 : isForexSym(sym) ? 100000 : 1; }
 function sizeBox(d) {
@@ -571,14 +582,20 @@ function sizeBox(d) {
   const bal = parseFloat(document.getElementById('bal')?.value) || 0, rp = parseFloat(document.getElementById('rp')?.value) || 1;
   const slDist = Math.abs(d.price - d.stops.sl), tpDist = Math.abs(d.stops.tp - d.price);
   if (!bal || !slDist) return '';
-  const riskUsd = bal * rp / 100, units = riskUsd / slDist, lots = units / contractOf(d.sym);
+  // Objem se zaokrouhluje DOLŮ na 0,01 lotu (dřív toFixed(2) zaokrouhloval i nahoru = riziko nad limitem).
+  const riskUsd = bal * rp / 100, c = contractOf(d.sym);
+  const lots = Math.floor(riskUsd / slDist / c / 0.01 + 1e-9) * 0.01, units = lots * c, realRisk = units * slDist;
   const unitTxt = d.sym.includes('XAU') ? `${units.toFixed(1)} oz` : isForexSym(d.sym) ? `${Math.round(units)} jedn.` : `${units < 10 ? units.toFixed(3) : units.toFixed(1)} ks`;
   const per = d.sym.includes('XAU') ? ` · 1 bod = ${(units).toFixed(1)} $` : '';
   const spreadWarn = d.sym.includes('XAU') && d.mode === 'min'
     ? `<div style="margin-top:3px;">Spread ~0,3 b. = ${Math.round(0.3 / tpDist * 100)} % cíle (${fmtP(tpDist, d.sym)} b.)</div>` : '';
+  const minRisk = 0.01 * c * slDist;
+  const main = lots >= 0.01
+    ? `<b>${lots.toFixed(2)} lotu = ${unitTxt}</b> při stopu ${fmtP(slDist, d.sym)}${per} · riziko ${fmtP(realRisk, 'X')} $`
+    : `<b style="color:var(--r);">Neobchodovat:</b> i nejmenší objem 0,01 lotu by riskoval ${fmtP(minRisk, 'X')} $ (${(minRisk / bal * 100).toFixed(1)} % účtu).`;
   return `<div class="sig-box" style="margin-top:6px;background:var(--bg2);color:var(--t1);"><div class="sig-title">⚖️ Objem na ${rp} % rizika (${fmtP(riskUsd, 'X')} $ z ${Math.round(bal)} $)</div>
-    <div style="font-size:12px;"><b>${lots < 0.01 ? lots.toFixed(4) : lots.toFixed(2)} lotu = ${unitTxt}</b> při stopu ${fmtP(slDist, d.sym)}${per}</div>${spreadWarn}
-    <div style="font-size:10px;color:var(--t2);margin-top:2px;">Zůstatek a % rizika se berou z Kalkulátoru.</div></div>`;
+    <div style="font-size:12px;">${main}</div>${spreadWarn}
+    <div style="font-size:10px;color:var(--t2);margin-top:2px;">Zůstatek a % rizika se berou z Kalkulátoru${settingsSaved() ? '' : ' — <b>zatím výchozích 1000 $, zadej tam skutečný zůstatek</b>'}.</div></div>`;
 }
 async function fetchBinance(sym, interval, n) {
   const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${BINANCE[sym]}&interval=${BN_IV[interval]}&limit=${n}`;
@@ -675,7 +692,7 @@ function levelsBox(d) {
     const ob = d.levels.filter(l => isL ? (l.p > p && l.p < tp) : (l.p < p && l.p > tp)).sort((a, b) => Math.abs(a.p - p) - Math.abs(b.p - p))[0];
     if (ob) warn.push(`Mezi vstupem a cílem leží „${ob.name}“ ${fmtP(ob.p, d.sym)} – cena se tam může zastavit.`);
   }
-  return `<details class="lv-box" onclick="event.stopPropagation()"><summary>📍 Klíčové úrovně · nad ${above[0] ? fmtP(above[0].p - p, d.sym) : '–'} · pod ${below[0] ? fmtP(p - below[0].p, d.sym) : '–'}</summary>
+  return `<details class="lv-box" onclick="event.stopPropagation()"><summary>📍 Klíčové úrovně · nejbližší nad ${above[0] ? '+' + fmtP(above[0].p - p, d.sym) : '–'} · pod ${below[0] ? '−' + fmtP(p - below[0].p, d.sym) : '–'} <span style="font-weight:400;color:var(--t2);">(vzdálenost od ceny)</span></summary>
     ${above.slice().reverse().map((l, i, a) => row(l, i === a.length - 1)).join('')}
     <div class="lv-row lv-px"><span>Cena</span><span>${fmtP(p, d.sym)}</span></div>
     ${below.map((l, i) => row(l, i === 0)).join('')}
@@ -1025,6 +1042,7 @@ function loadCalc(sym) {
   const pip = sym.includes('JPY') ? 0.001 : sym.includes('XAU') ? 0.01 : (sym.includes('BTC') || sym.includes('ETH')) ? 1 : isForex ? 0.00001 : 0.01;
   const contract = sym.includes('XAU') ? 100 : (sym.includes('BTC') || sym.includes('ETH')) ? 1 : isForex ? 100000 : 1;
   ID = { pip, contract, name: sym };
+  document.getElementById('myLots').value = '';
   selReq++; // případná rozběhnutá živá cena z kalkulátoru už nesmí přepsat data ze scanu
   document.querySelectorAll('#calcPills .pi').forEach(p => p.classList.toggle('on', p.dataset.sym === sym));
   // Data a vstup nastavit PŘED setDir(), aby případný přepočet stopů při změně směru
@@ -1057,6 +1075,7 @@ async function selI(el, sym, pip, contract) {
   document.querySelectorAll('#calcPills .pi').forEach(p => p.classList.remove('on'));
   el.classList.add('on');
   ID = { pip, contract, name: sym };
+  document.getElementById('myLots').value = '';
   const req = ++selReq;
   // Bez API klíče se instrument přepne pro ruční výpočet (dřív se nepřepnul vůbec
   // a kalkulátor dál počítal s kontraktem předchozího instrumentu).
@@ -1145,8 +1164,11 @@ function calc() {
   const inputOk = en > 0 && sl > 0 && slD > 0 && slOk;
   const rawLots = inputOk ? riskAmt / (slD * contract) : 0;
   let lr = Math.floor(rawLots / LOT_STEP + 1e-9) * LOT_STEP;
-  const minLotForced = inputOk && bal > 0 && lr < MIN_LOT;
+  const myLots = Math.max(0, +document.getElementById('myLots').value || 0);
+  const manual = inputOk && myLots > 0;
+  const minLotForced = !manual && inputOk && bal > 0 && lr < MIN_LOT;
   if (minLotForced) lr = MIN_LOT;
+  if (manual) lr = myLots;
   lr = Math.round(lr * 1000) / 1000;
 
   const tpOk = !tp || (dir === 'long' ? tp > en : tp < en);
@@ -1167,12 +1189,22 @@ function calc() {
   if (rp > 2) w.push('Riziko ' + rp + '% překračuje doporučenou hranici 2%.');
   if (rr > 0 && rr < 1) w.push('R:R 1:' + f(rr) + ' je pod doporučenou hodnotou 1:1.');
   if (minLotForced) w.push('SL je na tento účet příliš široký: min. lot ' + MIN_LOT + ' znamená riziko $' + f(aRisk) + ' (' + f(aRisk / bal * 100, 2) + '% účtu) místo nastavených ' + rp + '%.');
+  if (manual && bal > 0 && aRisk / bal * 100 > rp * 1.05) w.push('Tvůj objem ' + f(lr) + ' lotu riskuje ' + f(aRisk / bal * 100, 2) + ' % účtu, tj. ' + f(aRisk / riskAmt, 1) + '× víc než nastavených ' + rp + ' % (doporučeno ' + f(Math.floor(rawLots / LOT_STEP + 1e-9) * LOT_STEP) + ' lotu).');
+  // Související pozice stejným směrem (BTC + ETH, akcie USA) padnou při otočce trhu najednou = jedna sázka.
+  const grp = corrGroup(ID.name);
+  const rel = positions.filter(p => p.dir === dir && corrGroup(p.name) === grp);
+  if (lr > 0 && bal > 0 && rel.length) {
+    const relRisk = rel.reduce((s, p) => s + (p.risk || 0), 0) + aRisk;
+    w.push('Spolu s ' + rel.map(p => p.name.replace('/', '')).join(', ') + ' (' + (dir === 'long' ? 'long' : 'short') + ') je to jedna sázka: když trh otočí, padnou stopy najednou — dohromady ' + f(relRisk / bal * 100, 1) + ' % účtu.');
+  }
+  const dl = dailyLoss();
+  if (lr > 0 && bal > 0 && dl.limit > 0 && openRisk + aRisk > dl.limit - dl.loss) w.push('Když padnou všechny stopy najednou (' + f(openRisk + aRisk) + ' $), překročíš denní limit ztráty (zbývá ' + f(Math.max(0, dl.limit - dl.loss)) + ' $).');
   if (lr > 0 && bal > 0 && (openRisk + aRisk) / bal * 100 > 6) w.push('S touto pozicí by celkové riziko otevřených pozic bylo ' + f((openRisk + aRisk) / bal * 100, 1) + ' % účtu (doporučeno pod 6 %).');
 
   const wn = document.getElementById('wn');
   wn.textContent = w.join(' '); wn.className = 'wn' + (w.length ? ' on' : '');
 
-  document.getElementById('rL').textContent = lr > 0 ? f(lr, 2) + ' lotů' : '– lotů';
+  document.getElementById('rL').textContent = lr > 0 ? f(lr, 2) + ' lotů' + (manual ? ' (tvůj)' : '') : '– lotů';
   document.getElementById('rS').textContent = bal > 0 ? 'Riziko $' + f(aRisk) + ' | ' + f(aRisk / bal * 100, 2) + '% účtu' + (minLotForced ? ' ⚠ min. lot' : '') : 'Vyplň zůstatek účtu';
   document.getElementById('mRi').textContent = '-$' + f(aRisk);
   document.getElementById('mPr').textContent = tp ? '+$' + f(pot) : '—';
@@ -1190,7 +1222,7 @@ function calc() {
 
 function dailyLoss() {
   const bal = Math.max(0, +document.getElementById('bal').value || 0);
-  const dlim = Math.max(0.1, +document.getElementById('dlim').value || 3);
+  const dlim = Math.max(0.1, +document.getElementById('dlim').value || 2);
   const today = new Date().toDateString();
   const loss = journal.filter(j => new Date(j.ts).toDateString() === today && j.pl < 0).reduce((s, j) => s + Math.abs(j.pl), 0);
   return { loss, limit: bal * dlim / 100 };
@@ -1491,7 +1523,7 @@ function swT(t) { TABS.forEach(id => { document.getElementById('tp-' + id).class
 function badge() { const bP = document.getElementById('bP'), bJ = document.getElementById('bJ'); if (positions.length) { bP.textContent = positions.length; bP.style.display = 'block'; } else bP.style.display = 'none'; if (journal.length) { bJ.textContent = journal.length; bJ.style.display = 'block'; } else bJ.style.display = 'none'; }
 
 function updExp() {
-  const bal = +document.getElementById('bal').value || 0, rp = +document.getElementById('rp').value || 1, dlim = +document.getElementById('dlim').value || 3;
+  const bal = +document.getElementById('bal').value || 0, rp = +document.getElementById('rp').value || 1, dlim = +document.getElementById('dlim').value || 2;
   const tR = positions.reduce((s, p) => s + p.risk, 0), n = journal.length, wins = journal.filter(j => j.pl > 0).length, totalPL = journal.reduce((s, j) => s + j.pl, 0);
   document.getElementById('xBal').textContent = '$' + bal.toLocaleString('cs');
   document.getElementById('xRp').textContent = rp.toFixed(1) + '%';
@@ -1653,7 +1685,7 @@ function loadSettings() {
     const s = JSON.parse(localStorage.getItem('mtf_settings') || 'null');
     if (s) ['bal', 'rp', 'dlim'].forEach(k => { if (s[k] !== undefined && s[k] !== '') document.getElementById(k).value = s[k]; });
   } catch (e) { /* poškozené nastavení — zůstanou výchozí hodnoty */ }
-  ['bal', 'rp', 'dlim'].forEach(k => document.getElementById(k).addEventListener('change', saveSettings));
+  ['bal', 'rp', 'dlim'].forEach(k => document.getElementById(k).addEventListener('change', () => { saveSettings(); refreshScanCards(); }));
 }
 function loadData() {
   try {
