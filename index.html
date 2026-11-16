@@ -692,11 +692,11 @@ function levelsBox(d) {
     const ob = d.levels.filter(l => isL ? (l.p > p && l.p < tp) : (l.p < p && l.p > tp)).sort((a, b) => Math.abs(a.p - p) - Math.abs(b.p - p))[0];
     if (ob) warn.push(`Mezi vstupem a cílem leží „${ob.name}“ ${fmtP(ob.p, d.sym)} – cena se tam může zastavit.`);
   }
-  return `<details class="lv-box" onclick="event.stopPropagation()"><summary>📍 Klíčové úrovně · nejbližší nad ${above[0] ? '+' + fmtP(above[0].p - p, d.sym) : '–'} · pod ${below[0] ? '−' + fmtP(p - below[0].p, d.sym) : '–'} <span style="font-weight:400;color:var(--t2);">(vzdálenost od ceny)</span></summary>
+  // Varování (stop těsně za úrovní, úroveň před cílem) jsou vidět hned, ne až po rozbalení seznamu úrovní.
+  return `${warn.map(w => `<div class="lv-warn" style="margin-top:6px;font-size:11px;">⚠️ ${w}</div>`).join('')}<details class="lv-box" onclick="event.stopPropagation()"><summary>📍 Klíčové úrovně · nejbližší nad ${above[0] ? '+' + fmtP(above[0].p - p, d.sym) : '–'} · pod ${below[0] ? '−' + fmtP(p - below[0].p, d.sym) : '–'} <span style="font-weight:400;color:var(--t2);">(vzdálenost od ceny)</span></summary>
     ${above.slice().reverse().map((l, i, a) => row(l, i === a.length - 1)).join('')}
     <div class="lv-row lv-px"><span>Cena</span><span>${fmtP(p, d.sym)}</span></div>
     ${below.map((l, i) => row(l, i === 0)).join('')}
-    ${warn.map(w => `<div class="lv-warn">⚠️ ${w}</div>`).join('')}
     <div style="font-size:10px;color:var(--t2);margin-top:4px;">Mapa, ne signál: kde se cena často zastaví nebo zrychlí. Seance v UTC (Asie 0–7, Londýn 7–13, NY 13–21).${ol.length ? ` Opce: = opční mapa (Yahoo, ${escHtml((OPCE.time || '').slice(0, 16).replace('T', ' '))} UTC${OPCE_KEY[d.sym] && OPCE.tickers[OPCE_KEY[d.sym]] ? ', put/call OI ' + OPCE.tickers[OPCE_KEY[d.sym]].pcr_oi : ''}): call wall = odpor, put wall = podpora, max pain = magnet v den expirace (ověřujeme dopředu).` : ''}</div></details>`;
 }
 
@@ -869,6 +869,10 @@ function analyzeTF(candles) {
 // 8000ms mezi voláními API = max ~7,5 volání/min, bezpečně pod limitem
 // Twelve Data free plánu (8 volání/min). Původních 900ms limit reálně porušovalo.
 const API_DELAY = 8000;
+// Počet svíček na rámec. Dřív 55: EMA50 se pak počítala skoro jako prostý průměr a ADX (Wilder)
+// nestihl ustálit — na ETH 1D vyšla EMA50 o 3,5 % jinde a ADX o 2–5 bodů, což u hranic 20/25 měnilo skóre.
+// 300 svíček stojí stejně (Binance zdarma, Twelve Data 1 kredit za volání bez ohledu na počet).
+const NBARS = 300;
 
 async function startScan(auto = false) {
   if (scanning) return;
@@ -917,15 +921,15 @@ async function scanOne(sym, prevScan, throttle) {
       let c1h, c4h, c1d;
       if (throttle) {                                    // Twelve Data: sekvenčně kvůli limitu free plánu
         log(`${short}: načítám ${M.labels[0]}…`);
-        c1h = await fetchCandles(sym, M.tfs[0], 55);
+        c1h = await fetchCandles(sym, M.tfs[0], NBARS);
         await delay(API_DELAY);
         log(`${short}: načítám ${M.labels[1]}…`);
-        c4h = await fetchCandles(sym, M.tfs[1], 55);
+        c4h = await fetchCandles(sym, M.tfs[1], NBARS);
         await delay(API_DELAY);
         log(`${short}: načítám ${M.labels[2]}…`);
-        c1d = await fetchCandles(sym, M.tfs[2], 55);
+        c1d = await fetchCandles(sym, M.tfs[2], NBARS);
       } else {
-        [c1h, c4h, c1d] = await Promise.all(M.tfs.map(tf => fetchBinance(sym, tf, 55)));
+        [c1h, c4h, c1d] = await Promise.all(M.tfs.map(tf => fetchBinance(sym, tf, NBARS)));
       }
       const a1h = analyzeTF(c1h), a4h = analyzeTF(c4h), a1d = analyzeTF(c1d);
       const price = a1h.last;
@@ -937,13 +941,15 @@ async function scanOne(sym, prevScan, throttle) {
       // Shoda: aspoň 2 ze 3 rámců (1H/4H/1D) ukazují stejným směrem
       const trends = [a1h.trend, a4h.trend, a1d.trend];
       const confluent = trends.filter(t => t === 'bull').length >= 2 || trends.filter(t => t === 'bear').length >= 2;
-      const prevOverall = prevScan[sym] ? prevScan[sym].overall : null;
+      // Změna skóre jen proti nedávnému scanu ve stejném režimu (dřív i proti scanu starému hodiny/dny po otevření appky).
+      const pv = prevScan[sym];
+      const prevOverall = pv && pv.mode === scanMode && pv.ts && Date.now() - pv.ts < 3 * 36e5 ? pv.overall : null;
       const scoreDelta = prevOverall !== null ? overall - prevOverall : null;
       log(`${short}: ✓ skóre ${overall} → ${sig.toUpperCase()}`, 'ok');
       let levels = null;
       if (!throttle) { try { levels = await fetchLevels(sym); } catch (e) { /* úrovně jsou jen doplněk */ } }
       const d = { sym, price, a1h, a4h, a1d, overall, sig, atrV, stops, confluent, c1h, scoreDelta, src: srcName(sym),
-                  mode: scanMode, labels: M.labels, levels };
+                  mode: scanMode, labels: M.labels, levels, ts: Date.now() };
       lastScan[sym] = d;
       const card = document.getElementById('lc-' + short);
       if (card) card.outerHTML = buildCard(d);
@@ -991,7 +997,8 @@ function buildCard(d) {
   let sniperTxt = '';
   if (d.sig !== 'neu') {
     const sn = computeSniperStops(p, d.atrV, d.sig === 'bull');
-    sniperTxt = `<div class="sig-box ${d.sig}" style="margin-top:6px;opacity:.85;"><div class="sig-title">🎯 Sniper (rychlý)</div><div style="font-size:11px;">SL ${fmtP(sn.sl, d.sym)} → TP ${fmtP(sn.tp, d.sym)} · R:R 1:0.5, potřebuje &gt;67% win rate · v testech malých cílů ztrátové</div></div>`;
+    // Sbalené: v testech malých cílů ztrátové, nemá vypadat jako rovnocenný signál.
+    sniperTxt = `<details class="lv-box" onclick="event.stopPropagation()"><summary>🎯 Sniper (rychlý) – v testech ztrátový</summary><div style="font-size:11px;margin-top:4px;color:var(--t2);">SL ${fmtP(sn.sl, d.sym)} → TP ${fmtP(sn.tp, d.sym)} · R:R 1:0.5, potřebuje &gt;67% win rate; testy malých cílů na zlatě daly 56 %.</div></details>`;
   }
   const adxLbl = d.a1h.adxV !== null ? d.a1h.adxV.toFixed(0) : '–';
   const adxCls = d.a1h.adxV === null ? '' : d.a1h.adxV >= 25 ? 'pos' : d.a1h.adxV < 20 ? 'warn' : '';
@@ -1012,7 +1019,7 @@ function buildCard(d) {
     </div>
     <div class="ind-row">
       ${d.a1h.rsiV !== null ? `<span class="ind ${d.a1h.rsiV > 60 ? 'pos' : d.a1h.rsiV < 40 ? 'neg' : ''}">RSI ${d.a1h.rsiV.toFixed(0)}</span>` : ''}
-      <span class="ind warn">ATR ${fmtP(d.atrV, d.sym)}</span>
+      <span class="ind warn" title="Průměrný rozsah svíčky nejnižšího rámce">ATR ${(d.labels || ['1H'])[0]} ${fmtP(d.atrV, d.sym)}</span>
       <span class="ind ${d.a1h.e20 > d.a1h.e50 ? 'pos' : 'neg'}">EMA ${d.a1h.e20 > d.a1h.e50 ? '▲' : '▼'}</span>
       <span class="ind ${adxCls}" title="Average Directional Index — síla trendu">ADX ${adxLbl}</span>
       <span class="ind ${volCls}" title="Objem vs 20-svíčkový průměr">Vol ${volLbl}</span>
@@ -1700,7 +1707,10 @@ loadData();
 // Poslední výsledek scanu se ukládá lokálně, ať appka po zavření/znovuotevření
 // nezačíná pokaždé s prázdnou obrazovkou scanneru.
 function saveLastScan() {
-  try { localStorage.setItem('mtf_lastscan', JSON.stringify({ ts: Date.now(), syms: activeSyms, data: lastScan })); }
+  // Ukládá se jen posledních 30 svíček nejnižšího rámce (stačí na přepočet SL/TP, lookback 20) — 300 by zbytečně plnilo úložiště.
+  const slim = {};
+  for (const [k, d] of Object.entries(lastScan)) slim[k] = d && d.c1h ? { ...d, c1h: d.c1h.slice(-30) } : d;
+  try { localStorage.setItem('mtf_lastscan', JSON.stringify({ ts: Date.now(), syms: activeSyms, data: slim })); }
   catch (e) { /* localStorage plný/nedostupný — scan prostě nepřežije zavření appky */ }
 }
 function loadLastScanFromStorage() {
