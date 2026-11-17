@@ -191,6 +191,28 @@ display:flex;background:var(--bg1);flex-shrink:0;
 .modal-err.on{display:block;}
 .modal-row{display:flex;gap:8px;}
 .modal-row .bp,.modal-row .bs{margin-bottom:0;}
+/* ── Zlato detail (2026-11-17, ze zlaté aplikace) ── */
+.g-row{display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:13px;}
+.g-row>span:first-child{color:var(--t2);}
+.g-mono{font-family:ui-monospace,Menlo,Consolas,monospace;}
+.g-b{font-weight:700;}
+.g-price{font:700 26px/1 ui-monospace,Menlo,Consolas,monospace;color:var(--t1);}
+.g-note{font-size:10px;color:var(--t2);margin-top:6px;line-height:1.45;}
+.g-badge{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600;background:var(--bg2);color:var(--t2);}
+.g-badge.up{background:var(--gl);color:var(--glt);}.g-badge.down{background:var(--rl);color:var(--rlt);}.g-badge.warn{background:var(--al);color:var(--alt);}
+.g-verdict{background:var(--bg1);border-radius:16px;padding:12px 15px;margin-bottom:10px;box-shadow:var(--shadow);border-left:5px solid var(--a);}
+.g-verdict.g-ok{border-left-color:var(--g);}.g-verdict.g-no{border-left-color:var(--r);}
+.g-vt{font-size:16px;font-weight:700;color:var(--t1);}
+ul.g-check{list-style:none;padding:0;margin:6px 0 0;font-size:12px;color:var(--t1);}
+ul.g-check li{padding:2px 0;}
+.g-seg{display:flex;gap:6px;margin-bottom:6px;}
+.g-seg button,.g-fill button{flex:1;background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:10px;padding:7px;font-size:13px;font-weight:600;cursor:pointer;}
+.g-seg button.on.l{border-color:var(--g);color:var(--g);}.g-seg button.on.s{border-color:var(--r);color:var(--r);}
+.g-seg.g-mode button.on{border-color:var(--g);color:var(--g);}
+.g-fill{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0;}
+.g-fill button{font-size:11px;font-weight:500;color:var(--t2);}
+.g-trade label{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:3px 0;font-size:13px;color:var(--t2);}
+.g-trade input[type=number]{width:120px;background:var(--bg2);color:var(--t1);border:.5px solid var(--bd);border-radius:10px;padding:7px 9px;font-size:14px;text-align:right;}
 </style>
 </head>
 <body>
@@ -253,6 +275,104 @@ display:flex;background:var(--bg1);flex-shrink:0;
 • „Sniper“ s cílem 0,5× ATR a stopem 1× ATR potřebuje přes 67 % úspěšných obchodů; podobný test malých cílů na zlatě dal 56 % proti potřebným 77 %.<br>
 • Skalpování na 1–5 minut na zlatě (vstupy podle linií, malý stop) dalo po spreadu kolem −0,45 R na obchod – spread je proti malému cíli velký.<br>
 • Skóre ukazuje, kam trh míří teď, ne že tam půjde. Rozhoduje riziko: 1 % na obchod, denní limit. Objem v kartě je spočítaný právě na to.
+</div></details>
+</div>
+
+<!-- ─── ZLATO DETAIL (2026-11-17: sloučeno ze zlaté aplikace xauusd-app-2) ─── -->
+<div class="tp" id="tp-gold">
+<button class="ref-btn" onclick="swT('scan')" style="margin-bottom:10px;">← Zpět na Scanner</button>
+<div class="card" style="display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;">
+  <div class="sym-name">Zlato · XAU/USD</div>
+  <div class="g-price" id="g-price">–</div><span id="g-chg" class="g-mono"></span>
+  <div style="font-size:10px;color:var(--t2);width:100%;" id="g-upd">načítám…</div>
+</div>
+<div class="g-verdict g-mid" id="g-verdict">
+  <div class="g-vt" id="g-v-title">Počítám…</div>
+  <div style="font-size:10px;color:var(--t2);">Pomůcka podle postupu puntíků (D1 → H4 → H1, VWAP, reliéf, makro). Není to ověřená strategie – rozhoduješ ty.</div>
+  <ul class="g-check" id="g-v-list"></ul>
+  <div id="g-scan" style="font-size:11px;margin-top:4px;"></div>
+</div>
+
+<div class="card g-trade">
+  <div class="sl">Můj obchod – vstup, TP, SL</div>
+  <div class="g-seg g-mode"><button id="g-m-robot">🤖 Vyplňuje robot</button><button id="g-m-hand">✋ Ručně</button></div>
+  <div id="g-t-robot" style="font-size:11px;color:var(--t2);margin:2px 0 8px"></div>
+  <div class="g-seg"><button id="g-t-long" class="l">▲ LONG</button><button id="g-t-short" class="s">▼ SHORT</button></div>
+  <label>Vstup <input id="g-t-entry" type="number" inputmode="decimal" step="0.01"></label>
+  <label>Take profit (TP) <input id="g-t-tp" type="number" inputmode="decimal" step="0.01"></label>
+  <label>Stop loss (SL) <input id="g-t-sl" type="number" inputmode="decimal" step="0.01"></label>
+  <div class="g-fill"><button id="g-t-fill">Doplnit z úrovní H1 (cíl 80 % swingu, stop 4,5)</button><button id="g-t-clear">Vymazat</button></div>
+  <div class="g-fill"><button id="g-t-gex">Návrh TP/SL z opční mapy (gama)</button></div>
+  <div class="g-row"><span>Do TP / do SL</span><span class="g-mono" id="g-t-dist">–</span></div>
+  <div class="g-row"><span>Poměr zisk : riziko</span><span class="g-mono g-b" id="g-t-rr">–</span></div>
+  <div class="g-row"><span>Objem (účet a riziko z Kalkulátoru)</span><span class="g-mono g-b" id="g-t-lot">–</span></div>
+  <div class="g-row"><span>Zisk při TP / ztráta při SL</span><span class="g-mono" id="g-t-usd">–</span></div>
+  <label>Obchod je otevřený (vstup vyplněn) <input id="g-t-filled" type="checkbox" style="width:auto"></label>
+  <div class="g-row"><span>Teď (podle ceny Binance)</span><span class="g-mono" id="g-t-now">–</span></div>
+  <label>Rozdíl broker − Binance (b.) <input id="g-t-basis" type="number" inputmode="decimal" step="0.1" value="0"></label>
+  <ul class="g-check" id="g-t-warn"></ul>
+  <button class="bp" id="g-t-add" style="margin-top:6px;">Přidat do Pozic</button>
+  <div style="font-size:10px;color:var(--t2);" id="g-acc"></div>
+  <div style="font-size:10px;color:var(--t2);margin-top:4px;">Ceny zadávej podle svého brokera; „Teď“ přepočítá cenu Binance o zadaný rozdíl (u RoboForexu bývá −5 až −8). Po uzavření zapiš výsledek v Pozicích → do Journalu.</div>
+</div>
+
+<div class="card"><div class="sl">Směr</div>
+  <div class="g-row"><span>D1</span><span id="g-d1"></span></div>
+  <div class="g-row"><span>H4</span><span id="g-h4"></span></div>
+  <div class="g-row"><span>H1</span><span id="g-h1"></span></div>
+  <div class="g-row"><span>Cena vs. VWAP dne</span><span id="g-vw-side"></span></div>
+  <div class="g-row"><span>Dnešní den</span><span id="g-dayType"></span></div>
+</div>
+<div class="card"><div class="sl">VWAP dne</div>
+  <div class="g-row"><span>VWAP</span><span class="g-mono g-b" id="g-vwap">–</span></div>
+  <div class="g-row"><span>Vzdálenost</span><span class="g-mono" id="g-vw-dist">–</span></div>
+  <div class="g-row"><span>ATR H1</span><span class="g-mono" id="g-atr">–</span></div>
+  <div class="g-note">„Daleko od VWAP bych měl strach, trh se k VWAP vrací.“ Varování nad 1,5 × ATR H1.</div>
+</div>
+<div class="card"><div class="sl">Prostor do překážky (reliéf)</div>
+  <div class="g-row"><span>LONG – překážka</span><span class="g-mono" id="g-obs-l">–</span></div>
+  <div class="g-row"><span>LONG – volno</span><span class="g-mono g-b" id="g-room-l">–</span></div>
+  <div class="g-row"><span>SHORT – překážka</span><span class="g-mono" id="g-obs-s">–</span></div>
+  <div class="g-row"><span>SHORT – volno</span><span class="g-mono g-b" id="g-room-s">–</span></div>
+  <div class="g-note">Překážka = nejbližší H1 vrchol/dno (fraktál ±3, posledních 120 h) nebo šikmá linie přes dva poslední nižší vrcholy / vyšší dna. Pod 4 body = malý prostor.</div>
+</div>
+<div class="card"><div class="sl">Úrovně H1 a cíl swingu</div>
+  <div class="g-row"><span>Buy stop (high poslední H1)</span><span class="g-mono" id="g-lv-buy">–</span></div>
+  <div class="g-row"><span>Sell stop (low poslední H1)</span><span class="g-mono" id="g-lv-sell">–</span></div>
+  <div class="g-row"><span>Poslední swing (M5)</span><span class="g-mono" id="g-swing">–</span></div>
+  <div class="g-row"><span>Cíl 80 % swingu – long</span><span class="g-mono" id="g-tg-l">–</span></div>
+  <div class="g-row"><span>Cíl 80 % swingu – short</span><span class="g-mono" id="g-tg-s">–</span></div>
+</div>
+<div class="card"><div class="sl">Klíčové úrovně (liquidity)</div>
+  <div id="g-levels" class="g-mono" style="font-size:12px">načítám…</div>
+  <div class="g-note">High/low předchozí seance (UTC: Asie 0–7, Londýn 7–13, NY 13–21), dne, týdne, měsíce, poslední 4H svíčky a swingu H1; „Opce:“ = strike GLD s nejvíc otevřenými opcemi přepočtený na zlato. Mapa, ne signál – jako vstup v testech výhodu nedaly.</div>
+</div>
+<div class="card"><div class="sl">Gama mapa (GEX) – kde se trh zrychluje</div>
+  <div id="g-gex-reg" style="font-size:11px;color:var(--t2);">načítám…</div>
+  <div id="g-gex"></div>
+  <div class="g-note">Gama dealerů z opcí GLD přepočtená na zlato (expirace do 30 dní, 2× denně). Červeně zesilují pohyb, zeleně tlumí. Zatím orientace, ne signál.</div>
+</div>
+<div class="card"><div class="sl">Makro USA</div>
+  <div id="g-macro" style="font-size:12px;color:var(--t2);">načítám…</div>
+  <div class="g-note">Vysoký (●) a střední dopad (ForexFactory). 30 min kolem silné zprávy vstup nedoporučen.</div>
+</div>
+<div class="card"><div class="sl">Tok a páka (Binance, jen informace)</div>
+  <div class="g-row"><span>Agresivní nákupy 15 min</span><span class="g-mono" id="g-tk15">–</span></div>
+  <div class="g-row"><span>Agresivní nákupy 1 h</span><span class="g-mono" id="g-tk60">–</span></div>
+  <div class="g-row"><span>Účty v long</span><span class="g-mono" id="g-lsr">–</span></div>
+  <div class="g-row"><span>Funding p.a.</span><span class="g-mono" id="g-fund">–</span></div>
+  <div class="g-note">Testy na historii neukázaly, že by tok sám předpovídal směr – berte jako kontext.</div>
+</div>
+<div class="card"><div class="sl">Graf</div>
+  <div class="pills" id="g-tabs"><button class="pi" data-i="5">M5</button><button class="pi" data-i="15">M15</button><button class="pi on" data-i="60">H1</button><button class="pi" data-i="240">H4</button><button class="pi" data-i="D">D1</button></div>
+  <div style="height:380px;border-radius:12px;overflow:hidden;"><div id="g-tv" style="height:100%"></div></div>
+</div>
+<details class="card"><summary style="font-size:12px;color:var(--t2);cursor:pointer;">Co víme z testů (zlato)</summary>
+<div style="font-size:11px;color:var(--t2);line-height:1.5;margin-top:6px;">
+• Průraz H1 svíčky, cíl 2 / stop 4,5: −0,19 R na obchod (úspěšnost 56 % proti potřebným 77 %).<br>
+• Puntíky mechanicky (8 variant) ani kanál ABCD výhodu nedaly; nesl informaci jen filtr reliéfu.<br>
+• 17. 11. 2026: 40+ vzorů a pravidel vstupu (kanály, trendlinie, hlava a ramena, trojúhelníky, Fibo, divergence…) po spreadu výhodu nedalo; model VŠE nejlépe (+0,016 R), bez důkazu – běží jako robot na Demu 3.<br>
+Ceny: Binance XAUUSDT (bývá o ~5–8 b. výš než spot u brokera). Den a VWAP od půlnoci serveru MT5 (Athény). Není to investiční doporučení.
 </div></details>
 </div>
 
@@ -1029,7 +1149,7 @@ function buildCard(d) {
       <div class="score-lbl"><span>Bear 0</span><span>Skóre: ${d.overall}/100${deltaTxt}</span><span>100 Bull</span></div>
       <div class="score-bar"><div class="score-fill" style="width:${d.overall}%;background:${d.sig === 'bull' ? 'var(--g)' : d.sig === 'bear' ? 'var(--r)' : 'var(--t2)'}"></div></div>
     </div>
-    <div class="sig-box ${d.sig}"><div class="sig-title">${sigIcon}</div><div style="font-size:11px;">${sigTxt}</div></div>
+    <div class="sig-box ${d.sig}"><div class="sig-title">${sigIcon}</div><div style="font-size:11px;">${sigTxt}</div></div>${d.sym === 'XAU/USD' && d.sig !== 'neu' && typeof GOLD !== 'undefined' ? GOLD.conflict(d.sig === 'bull' ? 1 : -1) : ''}${d.sym === 'XAU/USD' ? '<div style="font-size:11px;margin-top:4px;"><a href="#" onclick="GOLD.open();return false;" style="color:var(--g);">Zlatý detail →</a></div>' : ''}
     ${sizeBox(d)}
     ${levelsBox(d)}
     ${sniperTxt}
@@ -1524,9 +1644,9 @@ function renderBots() {
 }
 
 // ─── TABS ─────────────────────────────────────────────────
-const TABS = ['scan', 'bot', 'calc', 'pos', 'jnl', 'exp'];
-const TITLES = { scan: ['MTF Scanner', 'Binance + Twelve Data — živá tržní data'], bot: ['Roboti', 'Demo MT5 + opce IBKR — stav z PC'], calc: ['Kalkulátor', 'Výpočet pozice dle ATR a live ceny'], pos: ['Otevřené pozice', 'Sledování a management'], jnl: ['Trading Journal', 'Historie a equity křivka'], exp: ['Export', 'PDF a CSV report'] };
-function swT(t) { TABS.forEach(id => { document.getElementById('tp-' + id).className = 'tp' + (id === t ? ' on' : ''); document.getElementById('nb-' + id).className = 'nb' + (id === t ? ' on' : ''); }); document.getElementById('hT').textContent = TITLES[t][0]; document.getElementById('hS').textContent = TITLES[t][1]; document.getElementById('body').scrollTop = 0; if (t === 'jnl') renderJnl(); if (t === 'exp') updExp(); if (t === 'bot') { renderBots(); if (botCfg.repo && botCfg.token) loadBots(); } }
+const TABS = ['scan', 'bot', 'calc', 'pos', 'jnl', 'exp', 'gold'];
+const TITLES = { scan: ['MTF Scanner', 'Binance + Twelve Data — živá tržní data'], bot: ['Roboti', 'Demo MT5 + opce IBKR — stav z PC'], calc: ['Kalkulátor', 'Výpočet pozice dle ATR a live ceny'], pos: ['Otevřené pozice', 'Sledování a management'], jnl: ['Trading Journal', 'Historie a equity křivka'], exp: ['Export', 'PDF a CSV report'], gold: ['Zlato · XAU/USD', 'Směr, VWAP, reliéf, úrovně, můj obchod'] };
+function swT(t) { TABS.forEach(id => { document.getElementById('tp-' + id).className = 'tp' + (id === t ? ' on' : ''); { const nb = document.getElementById('nb-' + id); if (nb) nb.className = 'nb' + (id === t || (t === 'gold' && id === 'scan') ? ' on' : ''); } }); document.getElementById('hT').textContent = TITLES[t][0]; document.getElementById('hS').textContent = TITLES[t][1]; document.getElementById('body').scrollTop = 0; if (t === 'jnl') renderJnl(); if (t === 'exp') updExp(); if (t === 'bot') { renderBots(); if (botCfg.repo && botCfg.token) loadBots(); } }
 function badge() { const bP = document.getElementById('bP'), bJ = document.getElementById('bJ'); if (positions.length) { bP.textContent = positions.length; bP.style.display = 'block'; } else bP.style.display = 'none'; if (journal.length) { bJ.textContent = journal.length; bJ.style.display = 'block'; } else bJ.style.display = 'none'; }
 
 function updExp() {
@@ -1779,7 +1899,8 @@ function renderGold(d, offline) {
       <span class="ind ${d.price > d.ema50 ? 'pos' : 'neg'}">EMA50 ${(+d.ema50).toFixed(0)}</span>
       <span class="ind">S ${escHtml((d.support || []).slice(0, 2).join(' / '))}</span><span class="ind">R ${escHtml((d.resistance || []).slice(0, 2).join(' / '))}</span>
     </div>
-    <div style="font-size:11px;color:var(--t2);line-height:1.5;">Indikátory ${lean} — kontext trhu, ne obchodní signál. <a href="#" onclick="useGoldInCalc();return false;" style="color:var(--g);">Cena do kalkulátoru →</a></div>`;
+    <div style="font-size:11px;color:var(--t2);line-height:1.5;">Indikátory ${lean} — kontext trhu, ne obchodní signál. <a href="#" onclick="useGoldInCalc();return false;" style="color:var(--g);">Cena do kalkulátoru →</a></div>
+    <button class="bp" style="margin:8px 0 0;padding:10px;font-size:14px;" onclick="GOLD.open()">Otevřít zlatý detail (směr, reliéf, úrovně, můj obchod) →</button>`;
 }
 function useGoldInCalc() {
   let d = null;
@@ -1797,6 +1918,421 @@ function useGoldInCalc() {
   calc(); swT('calc');
 }
 loadGold();
+
+// 2026-11-17 (uživatel: správný zůstatek je 10 000 $ jako Demo 3): jednorázově přepsat dřívějších 20 000 $
+try {
+  if (!localStorage.getItem('mtf_bal_fix_1117')) {
+    const b = document.getElementById('bal');
+    if (+b.value === 20000) { b.value = 10000; saveSettings(); }
+    localStorage.setItem('mtf_bal_fix_1117', '1');
+  }
+} catch (e) { /* localStorage nedostupný */ }
+
+// ─── ZLATO DETAIL (2026-11-17: sloučeno ze zlaté aplikace xauusd-app-2) ──────────────
+// Počítá se v telefonu z Binance XAUUSDT (jako dřív zlatá aplikace). Účet a riziko bere z Kalkulátoru (#bal, #rp),
+// obchod jde přidat do Pozic. GOLD.conflict(dir) dává varování ke XAU signálu scanneru (reliéf, H1).
+const GOLD = (() => {
+  const F = 'https://fapi.binance.com';
+  const OPCE_URL = 'https://miroslavuherek153.github.io/mtf-trader/data/opce.json';
+  const $ = (id) => document.getElementById('g-' + id);
+  const fmt = (x, d = 2) => (x == null || !isFinite(x)) ? '–' : Number(x).toFixed(d);
+  const S = {};
+  let timer = null, tvInterval = '60', tvLoaded = false, tSide = 1, mode = 'robot';
+
+  async function j(url) { const r = await fetch(url); if (!r.ok) throw new Error(url.split('?')[0].split('/').pop() + ' ' + r.status); return r.json(); }
+  const kl = (raw) => raw.map((k) => ({ t: k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4], v: +k[5], tb: +k[9] }));
+  function ema(a, n) { const k = 2 / (n + 1); let e = a[0]; const out = [e]; for (let i = 1; i < a.length; i++) { e = a[i] * k + e * (1 - k); out.push(e); } return out; }
+  function atr(b, n = 14) { let a = null; for (let i = 1; i < b.length; i++) { const tr = Math.max(b[i].h - b[i].l, Math.abs(b[i].h - b[i - 1].c), Math.abs(b[i].l - b[i - 1].c)); a = a == null ? tr : (a * (n - 1) + tr) / n; } return a; }
+  function trend(b) {
+    const c = b.map((x) => x.c), e = ema(c, 20), n = e.length - 1;
+    const slope = e[n] - e[n - 5], last = c[n];
+    if (last > e[n] && slope > 0) return 1;
+    if (last < e[n] && slope < 0) return -1;
+    return 0;
+  }
+  function tzOffsetMin(date, tz) {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(date).map((x) => [x.type, x.value]));
+    return (Date.UTC(+p.year, p.month - 1, +p.day, +p.hour, +p.minute) - Math.floor(date.getTime() / 60000) * 60000) / 60000;
+  }
+  function serverDayStart(ms) { const off = tzOffsetMin(new Date(ms), 'Europe/Athens') * 60000; const loc = ms + off; return loc - (loc % 86400000) - off; }
+  function fractals(b, k = 3) {
+    const hi = [], lo = [];
+    for (let i = k; i < b.length - k; i++) {
+      const win = b.slice(i - k, i + k + 1);
+      if (b[i].h === Math.max(...win.map((x) => x.h))) hi.push(i);
+      if (b[i].l === Math.min(...win.map((x) => x.l))) lo.push(i);
+    }
+    return { hi, lo };
+  }
+  function reliefLine(b, idx, side) {
+    const pts = idx.map((i) => [i, side === 1 ? b[i].h : b[i].l]);
+    if (pts.length < 2) return null;
+    const [j2, p2] = pts[pts.length - 1];
+    for (let q = pts.length - 2; q >= 0; q--) {
+      const [j1, p1] = pts[q];
+      if ((p1 - p2) * side <= 0) continue;
+      const s = (p2 - p1) / (j2 - j1);
+      for (let i = j1; i <= j2; i++) { if ((b[i].c - (p1 + s * (i - j1))) * side > 0) return null; }
+      return p1 + s * (b.length - j1);
+    }
+    return null;
+  }
+  function keyLevels(d1, h4, h1, now) {
+    const out = [];
+    const add = (name, hi, lo) => { if (isFinite(hi)) out.push({ name: name + ' high', p: hi }); if (isFinite(lo)) out.push({ name: name + ' low', p: lo }); };
+    const hl = (arr) => [Math.max(...arr.map((x) => x.h)), Math.min(...arr.map((x) => x.l))];
+    const n = new Date(now), day0 = Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate());
+    const pd = d1.filter((x) => x.t < day0).pop();
+    if (pd) add('Předch. den', pd.h, pd.l);
+    const wk0 = day0 - ((new Date(day0).getUTCDay() + 6) % 7) * 864e5;
+    const W = d1.filter((x) => x.t >= wk0 - 7 * 864e5 && x.t < wk0);
+    if (W.length) add('Předch. týden', ...hl(W));
+    const m0 = Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), 1), pm0 = Date.UTC(n.getUTCFullYear(), n.getUTCMonth() - 1, 1);
+    const Mo = d1.filter((x) => x.t >= pm0 && x.t < m0);
+    if (Mo.length) add('Předch. měsíc', ...hl(Mo));
+    const c4 = h4.filter((x) => x.t + 4 * 36e5 <= now).pop();
+    if (c4) add('Posl. 4H svíčka', c4.h, c4.l);
+    let best = null;
+    for (const back of [0, 1]) for (const [nm, a, b] of [['Asie', 0, 7], ['Londýn', 7, 13], ['New York', 13, 21]]) {
+      const s = day0 - back * 864e5 + a * 36e5, e = day0 - back * 864e5 + b * 36e5;
+      if (e <= now && (!best || e > best.e)) best = { nm: nm + (back ? ' (včera)' : ''), s, e };
+    }
+    if (best) { const X = h1.filter((x) => x.t >= best.s && x.t < best.e); if (X.length) add('Seance ' + best.nm, ...hl(X)); }
+    const hc = h1.filter((x) => x.t + 36e5 <= now), f = fractals(hc);
+    add('Swing H1', f.hi.length ? hc[f.hi[f.hi.length - 1]].h : NaN, f.lo.length ? hc[f.lo[f.lo.length - 1]].l : NaN);
+    return out;
+  }
+  function optLevels(o, now) {
+    const x = o && o.tickers && o.tickers.XAU;
+    if (!x || now - Date.parse(o.time) > 4 * 864e5) return [];
+    const out = [];
+    if (x.call_wall) out.push({ name: 'Opce: call wall (odpor)', p: x.call_wall });
+    if (x.put_wall) out.push({ name: 'Opce: put wall (podpora)', p: x.put_wall });
+    if (x.max_pain && x.near_exp >= new Date(now).toISOString().slice(0, 10)) out.push({ name: `Opce: max pain ${x.near_exp.slice(8)}.${x.near_exp.slice(5, 7)}.`, p: x.max_pain });
+    if (x.gex_flip) out.push({ name: `Opce: gama flip (${x.gex_musd < 0 ? 'pod ním zrychlené pohyby' : 'nad ním klidnější trh'})`, p: x.gex_flip });
+    return out;
+  }
+  function gexChart(x, price, basis) {
+    const box = $('gex'), reg = $('gex-reg');
+    if (!x || !(x.gex_profile || []).length) { box.innerHTML = ''; reg.textContent = 'Opční data nejsou k dispozici.'; return; }
+    const neg = x.gex_musd < 0;
+    reg.innerHTML = `Celkově <b style="color:var(${neg ? '--r' : '--g'})">${neg ? 'záporná gama – pohyby se zrychlují' : 'kladná gama – trh se drží v pásmu'}</b>`
+      + (x.gex_flip ? ` · flip ${fmt(x.gex_flip + basis)} (cena ${price > x.gex_flip ? 'nad' : 'pod'} ním)` : '');
+    const rows = x.gex_profile.slice().sort((a, b) => b[0] - a[0]), W = 360, rh = 13, top = 6, H = top * 2 + rows.length * rh;
+    const mx = Math.max(...rows.map((r) => Math.abs(r[1]))) || 1, cx = 200, half = 120;
+    const y = (p) => {
+      for (let i = 0; i < rows.length - 1; i++) if (p <= rows[i][0] && p >= rows[i + 1][0])
+        return top + (i + (rows[i][0] - p) / (rows[i][0] - rows[i + 1][0] || 1)) * rh + rh / 2;
+      return p > rows[0][0] ? top : H - top;
+    };
+    let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;margin-top:6px" role="img" aria-label="GEX po strikách">`;
+    rows.forEach((r, i) => {
+      const w = Math.abs(r[1]) / mx * half, yy = top + i * rh;
+      svg += `<text x="4" y="${yy + 10}" font-size="9" fill="#8e8e93">${fmt(r[0] + basis, 0)}</text>`
+        + `<rect x="${r[1] < 0 ? cx - w : cx}" y="${yy + 2}" width="${Math.max(w, 1)}" height="${rh - 4}" rx="2" fill="${r[1] < 0 ? '#E24B4A' : '#1D9E75'}" opacity=".85"></rect>`;
+    });
+    svg += `<line x1="${cx}" x2="${cx}" y1="${top}" y2="${H - top}" stroke="#8e8e93" stroke-width=".6"></line>`;
+    const mark = (p, color, label) => p == null ? '' : `<line x1="40" x2="${W - 4}" y1="${y(p)}" y2="${y(p)}" stroke="${color}" stroke-width="1.2" stroke-dasharray="4 3"></line>`
+      + `<text x="${W - 4}" y="${Math.max(y(p) - 2, 9)}" font-size="9" text-anchor="end" fill="${color}">${label} ${fmt(p + basis, 0)}</text>`;
+    svg += mark(x.call_wall, '#3b82f6', 'call wall') + mark(x.put_wall, '#db2777', 'put wall') + mark(x.gex_flip, '#BA7517', 'flip') + mark(price, '#d4a017', 'cena');
+    box.innerHTML = svg + '</svg>';
+  }
+  const dirTxt = (d) => d > 0 ? '<span class="g-badge up">nahoru</span>' : d < 0 ? '<span class="g-badge down">dolů</span>' : '<span class="g-badge warn">do strany</span>';
+  const acc = () => ({ bal: +document.getElementById('bal').value || 0, rp: +document.getElementById('rp').value || 0 });
+
+  async function update() {
+    try {
+      const [m1r, h1r, h4r, d1r, prem, ls, data, opce] = await Promise.all([
+        j(`${F}/fapi/v1/klines?symbol=XAUUSDT&interval=1m&limit=1500`), j(`${F}/fapi/v1/klines?symbol=XAUUSDT&interval=1h&limit=300`),
+        j(`${F}/fapi/v1/klines?symbol=XAUUSDT&interval=4h&limit=200`), j(`${F}/fapi/v1/klines?symbol=XAUUSDT&interval=1d&limit=120`),
+        j(`${F}/fapi/v1/premiumIndex?symbol=XAUUSDT`), j(`${F}/futures/data/globalLongShortAccountRatio?symbol=XAUUSDT&period=1h&limit=1`).catch(() => []),
+        fetch(GOLD_URL + '?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).catch(() => ({})),
+        fetch(OPCE_URL).then((r) => r.json()).catch(() => ({})),
+      ]);
+      const m1 = kl(m1r), h1 = kl(h1r), h4 = kl(h4r), d1 = kl(d1r);
+      const price = m1[m1.length - 1].c, now = Date.now();
+      const h1c = h1.slice(0, -1);
+      const A = atr(h1c);
+      const ds = serverDayStart(now);
+      const today = m1.filter((x) => x.t >= ds);
+      let pv = 0, vv = 0; today.forEach((x) => { pv += (x.h + x.l + x.c) / 3 * x.v; vv += x.v; });
+      const vwap = vv ? pv / vv : null, vwDist = vwap ? price - vwap : null;
+      const open = today.length ? today[0].o : price;
+      $('price').textContent = fmt(price);
+      $('chg').innerHTML = `<span style="color:var(${price >= open ? '--g' : '--r'})">${price >= open ? '+' : ''}${fmt(price - open)} dnes</span>`;
+      $('upd').textContent = 'Binance XAUUSDT · ' + new Date().toLocaleTimeString('cs-CZ') + ' · obnova každých 20 s, když je detail otevřený';
+
+      const dD = trend(d1.slice(0, -1)), dH4 = trend(h4.slice(0, -1)), dH1 = trend(h1c);
+      $('d1').innerHTML = dirTxt(dD); $('h4').innerHTML = dirTxt(dH4); $('h1').innerHTML = dirTxt(dH1);
+      const vSide = vwap ? Math.sign(vwDist) : 0;
+      $('vw-side').innerHTML = vSide > 0 ? '<span class="g-badge up">nad VWAP</span>' : vSide < 0 ? '<span class="g-badge down">pod VWAP</span>' : '–';
+      const yd = d1[d1.length - 2];
+      const tdH = today.length ? Math.max(...today.map((x) => x.h)) : price, tdL = today.length ? Math.min(...today.map((x) => x.l)) : price;
+      const inside = tdH <= yd.h && tdL >= yd.l, chop = inside && dD === 0;
+      $('dayType').innerHTML = chop ? '<span class="g-badge warn">chop (uvnitř včerejška)</span>'
+        : inside ? '<span class="g-badge">uvnitř včerejšího rozpětí</span>' : '<span class="g-badge">mimo včerejší rozpětí</span>';
+      $('vwap').textContent = fmt(vwap);
+      const far = vwap && A && Math.abs(vwDist) > 1.5 * A;
+      $('vw-dist').innerHTML = `<span${far ? ' style="color:var(--a)"' : ''}>${vwDist >= 0 ? '+' : ''}${fmt(vwDist)} b. (${fmt(Math.abs(vwDist) / A, 1)} × ATR)${far ? ' – daleko' : ''}</span>`;
+      $('atr').textContent = fmt(A);
+
+      const fr = fractals(h1c), from = h1c.length - 120;
+      const hiIdx = fr.hi.filter((i) => i >= from), loIdx = fr.lo.filter((i) => i >= from);
+      const hiAbove = hiIdx.filter((i) => h1c[i].h > price).map((i) => h1c[i].h);
+      const loBelow = loIdx.filter((i) => h1c[i].l < price).map((i) => h1c[i].l);
+      const rl = reliefLine(h1c, hiIdx, 1), rs = reliefLine(h1c, loIdx, -1);
+      const candL = [...hiAbove, ...(rl && rl > price ? [rl] : [])], candS = [...loBelow, ...(rs && rs < price ? [rs] : [])];
+      const obsL = candL.length ? Math.min(...candL) : null, obsS = candS.length ? Math.max(...candS) : null;
+      const roomL = obsL ? obsL - price : null, roomS = obsS ? price - obsS : null;
+      const roomCol = (r) => r == null ? '--g' : r < 4 ? '--r' : r < 8 ? '--a' : '--g';
+      $('obs-l').textContent = obsL ? fmt(obsL) + (obsL === rl ? ' (reliéf)' : '') : 'žádná ve 120 h';
+      $('obs-s').textContent = obsS ? fmt(obsS) + (obsS === rs ? ' (reliéf)' : '') : 'žádná ve 120 h';
+      $('room-l').innerHTML = `<span style="color:var(${roomCol(roomL)})">${roomL == null ? 'volno' : fmt(roomL) + ' b.'}</span>`;
+      $('room-s').innerHTML = `<span style="color:var(${roomCol(roomS)})">${roomS == null ? 'volno' : fmt(roomS) + ' b.'}</span>`;
+
+      const last = h1c[h1c.length - 1], spr = 0.3;
+      const m5 = []; m1.forEach((x) => { const t = x.t - (x.t % 300000), z = m5[m5.length - 1];
+        if (z && z.t === t) { z.h = Math.max(z.h, x.h); z.l = Math.min(z.l, x.l); z.c = x.c; } else m5.push({ t, o: x.o, h: x.h, l: x.l, c: x.c }); });
+      const m5c = m5.slice(0, -1), f5 = fractals(m5c);
+      const lastHi = f5.hi.length ? m5c[f5.hi[f5.hi.length - 1]].h : null, lastLo = f5.lo.length ? m5c[f5.lo[f5.lo.length - 1]].l : null;
+      const sw = lastHi && lastLo ? Math.abs(lastHi - lastLo) : null;
+      const buy = last.h + spr, sell = last.l;
+      $('lv-buy').textContent = fmt(buy); $('lv-sell').textContent = fmt(sell);
+      $('swing').textContent = sw ? `${fmt(sw)} b. (${fmt(lastLo)} – ${fmt(lastHi)})` : '–';
+      const tgL = sw ? buy + 0.8 * sw : null, tgS = sw ? sell - 0.8 * sw : null;
+      $('tg-l').innerHTML = tgL ? fmt(tgL) + (obsL && tgL > obsL ? ' <span style="color:var(--a)">za překážkou</span>' : '') : '–';
+      $('tg-s').innerHTML = tgS ? fmt(tgS) + (obsS && tgS < obsS ? ' <span style="color:var(--a)">za překážkou</span>' : '') : '–';
+
+      const basisNow = +$('t-basis').value || 0;
+      const levels = keyLevels(d1, h4, h1, now).concat(optLevels(opce, now));
+      S.opce = optLevels(opce, now).length ? opce.tickers.XAU : null;
+      gexChart(S.opce, price, basisNow);
+      const above = levels.filter((l) => l.p > price).sort((a, b) => a.p - b.p), below = levels.filter((l) => l.p <= price).sort((a, b) => b.p - a.p);
+      const lvRow = (l, near) => `<div class="g-row"${near ? ' style="font-weight:700"' : ''}><span>${l.name}</span><span>${fmt(l.p + basisNow)} <span style="color:var(--t2)">${l.p > price ? '+' : ''}${fmt(l.p - price)}</span></span></div>`;
+      $('levels').innerHTML = above.slice().reverse().map((l, i, a) => lvRow(l, i === a.length - 1)).join('')
+        + `<div class="g-row" style="color:var(--a);font-weight:700;border-top:1px dashed var(--bd);border-bottom:1px dashed var(--bd)"><span>Cena</span><span>${fmt(price + basisNow)}</span></div>`
+        + below.map((l, i) => lvRow(l, i === 0)).join('');
+
+      const share = (bars) => { const v = bars.reduce((s, x) => s + x.v, 0), b = bars.reduce((s, x) => s + x.tb, 0); return v ? b / v * 100 : null; };
+      const t15 = share(m1.slice(-15)), t60 = share(m1.slice(-60));
+      const tkCol = (x) => x == null ? '--t1' : x >= 55 ? '--g' : x <= 45 ? '--r' : '--t1';
+      $('tk15').innerHTML = `<span style="color:var(${tkCol(t15)})">${fmt(t15, 0)} %</span>`;
+      $('tk60').innerHTML = `<span style="color:var(${tkCol(t60)})">${fmt(t60, 0)} %</span>`;
+      $('lsr').textContent = ls.length ? fmt(ls[ls.length - 1].longAccount * 100, 0) + ' %' : '–';
+      $('fund').textContent = fmt(+prem.lastFundingRate * 6 * 365 * 100, 1) + ' %';
+
+      const ev = (data.macro || []).map((e) => ({ ...e, ms: Date.parse(e.t) })).filter((e) => e.ms > now - 3600e3 && e.ms < now + 2 * 86400e3);
+      const near = ev.find((e) => Math.abs(e.ms - now) <= 30 * 60e3 && e.impact === 'High');
+      $('macro').innerHTML = !data.macro ? 'Kalendář se načte s další aktualizací dat.'
+        : ev.length ? ev.map((e) => {
+          const mins = Math.round((e.ms - now) / 60e3);
+          const when = new Date(e.ms).toLocaleString('cs-CZ', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+          return `<div class="g-row"><span><span style="color:var(${e.impact === 'High' ? '--r' : '--a'})">●</span> ${escHtml(e.title)}</span><span class="g-mono">${when}${mins > 0 && mins < 600 ? ` (za ${mins} min)` : ''}</span></div>`;
+        }).join('') : 'Dnes a zítra nic důležitého.';
+
+      const hourPr = +new Intl.DateTimeFormat('cs-CZ', { timeZone: 'Europe/Prague', hour: 'numeric', hourCycle: 'h23' }).format(new Date());
+      const side = dH1 !== 0 && dH1 === vSide ? dH1 : 0;
+      const room = side > 0 ? roomL : side < 0 ? roomS : null;
+      const inWin = hourPr >= 7 && hourPr < 21;
+      const checks = [
+        [side !== 0, side > 0 ? 'H1 nahoru a cena nad VWAP' : side < 0 ? 'H1 dolů a cena pod VWAP' : 'H1 směr a strana VWAP se neshodují'],
+        [side === 0 || dD === side || dD === 0, dD === 0 ? 'D1 do strany' : dD === side ? 'D1 ve stejném směru' : 'D1 proti směru obchodu'],
+        [!chop, chop ? 'chop den – „nic mě nenutí obchodovat“' : 'není chop den'],
+        [room == null || room >= 4, room == null ? 'do překážky volno' : `do překážky ${fmt(room)} b.` + (room < 4 ? ' – malý prostor (reliéf)' : '')],
+        [!far, far ? 'daleko od VWAP – trh se vrací' : 'vzdálenost od VWAP v normě'],
+        [!near, near ? `silné makro do 30 min: ${near.title}` : 'žádné silné makro do 30 min'],
+        [inWin, inWin ? 'obchodní okno 7–21 h' : 'mimo obchodní okno 7–21 h'],
+      ];
+      const bad = checks.filter((c) => !c[0]).length;
+      $('v-list').innerHTML = checks.map(([ok, t]) => `<li>${ok ? '✅' : '⛔'} ${escHtml(t)}</li>`).join('');
+      const vEl = $('verdict'), dir = side > 0 ? '▲ LONG' : '▼ SHORT';
+      if (side !== 0 && bad === 0) { vEl.className = 'g-verdict g-ok'; $('v-title').textContent = dir + ' – podmínky splněny'; }
+      else if (side !== 0 && bad === 1) { vEl.className = 'g-verdict g-mid'; $('v-title').textContent = dir + ' – pozor, 1 podmínka chybí'; }
+      else { vEl.className = 'g-verdict g-no'; $('v-title').textContent = 'Nevstupovat – čekat'; }
+      Object.assign(S, { ts: now, price, buy, sell, sw, obsL, obsS, roomL, roomS, vwap, atr: A, vSide, dH1, levels,
+        vSideDir: side, bad, fails: checks.filter((c) => !c[0]).map((c) => c[1]), m5Hi: lastHi, m5Lo: lastLo });
+      scanNote();
+      trade();
+      robotFill();
+      if (typeof refreshScanCards === 'function') refreshScanCards();
+    } catch (e) {
+      $('upd').textContent = 'Chyba načítání dat (' + String(e.message).slice(0, 60) + ') – zkusím znovu';
+    }
+  }
+
+  // Varování ke XAU signálu scanneru: signál proti prostoru (reliéf pod 4 b.) nebo proti H1
+  function conflict(dir) {
+    if (!S.ts || Date.now() - S.ts > 15 * 60e3) return '';
+    const why = [];
+    const room = dir > 0 ? S.roomL : S.roomS;
+    if (room != null && room < 4) why.push(`do překážky jen ${fmt(room)} b. (reliéf)`);
+    if (S.dH1 && S.dH1 !== dir) why.push('H1 jde proti');
+    if (S.vSide && S.vSide !== dir) why.push(dir > 0 ? 'cena pod VWAP' : 'cena nad VWAP');
+    if (!why.length) return '';
+    return `<div style="margin-top:6px;padding:6px 8px;border-radius:8px;background:var(--rl);color:var(--rlt);font-size:11px;font-weight:600;">⛔ Signál proti prostoru – nevstupovat: ${escHtml(why.join(', '))}. <a href="#" onclick="GOLD.open();return false;" style="color:inherit;">Zlatý detail →</a></div>`;
+  }
+  function scanNote() {
+    const d = (typeof lastScan === 'object' && lastScan) ? lastScan['XAU/USD'] : null;
+    const box = $('scan');
+    if (!d || !d.sig || d.sig === 'neu') { box.innerHTML = '<span style="color:var(--t2)">Scanner: u XAU teď bez signálu.</span>'; return; }
+    const dir = d.sig === 'bull' ? 1 : -1, c = conflict(dir);
+    box.innerHTML = `Scanner: <b style="color:var(${dir > 0 ? '--g' : '--r'})">${dir > 0 ? 'LONG' : 'SHORT'} signál</b>` + (c || ' <span style="color:var(--g)">– prostor i H1 souhlasí</span>');
+  }
+
+  // ---------- můj obchod ----------
+  const TR = ['t-entry', 't-tp', 't-sl', 't-basis'];
+  function setSide(v) { tSide = v; $('t-long').classList.toggle('on', v === 1); $('t-short').classList.toggle('on', v === -1); trade(); }
+  function setMode(m) {
+    mode = m; $('m-robot').classList.toggle('on', m === 'robot'); $('m-hand').classList.toggle('on', m === 'hand');
+    if (m === 'hand') $('t-robot').textContent = 'Ručně – hodnoty zadáváš ty.';
+    trade(); robotFill();
+  }
+  function robotFill() {
+    if (mode !== 'robot' || S.price == null || S.vSideDir === undefined) return;
+    if ($('t-filled').checked) { $('t-robot').textContent = '🤖 Obchod je otevřený – robot hodnoty nemění.'; return; }
+    const basis = +$('t-basis').value || 0, side = S.vSideDir;
+    const clear = (why) => { ['t-entry', 't-tp', 't-sl'].forEach((k) => ($(k).value = '')); $('t-robot').innerHTML = '🤖 <b>Nevstupovat</b> – ' + escHtml(why); trade(); };
+    if (side === 0 || S.bad > 1) return clear(S.fails.slice(0, 2).join('; ') || 'směr není jasný');
+    if (!S.sw) return clear('chybí poslední swing');
+    const e = side > 0 ? S.buy : S.sell;
+    const ext = side > 0 ? S.m5Lo : S.m5Hi;
+    let slD = ext != null && (e - ext) * side > 0 ? (e - ext) * side + 0.5 : 4.5;
+    slD = Math.min(Math.max(slD, 2), 6);
+    let tpD = 0.8 * S.sw;
+    const obs = side > 0 ? S.obsL : S.obsS;
+    if (obs != null) tpD = Math.min(tpD, (obs - e) * side - 0.3);
+    if (tpD <= 0) return clear('vstup by byl až za překážkou (reliéf)');
+    if (tpD / slD < 1) return clear(`cíl ${fmt(tpD)} b. je menší než stop ${fmt(slD)} b. – málo prostoru`);
+    setSide(side);
+    $('t-entry').value = (e + basis).toFixed(2);
+    $('t-tp').value = (e + basis + side * tpD).toFixed(2);
+    $('t-sl').value = (e + basis - side * slD).toFixed(2);
+    $('t-robot').innerHTML = `🤖 Návrh: <b>${side > 0 ? 'LONG buy stop' : 'SHORT sell stop'}</b> na ${side > 0 ? 'high' : 'low'} poslední H1, `
+      + `TP ${obs != null && tpD < 0.8 * S.sw - 1e-9 ? 'před překážkou' : '80 % swingu M5'}, SL za poslední vlnou M5`
+      + (S.bad === 1 ? ` · <span style="color:var(--a)">pozor: ${escHtml(S.fails[0])}</span>` : '') + '. Neověřené pravidlo – rozhoduješ ty.';
+    trade();
+  }
+  function gexSuggest() {
+    const x = S.opce, A = S.atr, basis = +$('t-basis').value || 0, side = tSide;
+    if (!x || !(x.gex_profile || []).length || !A) { $('t-robot').textContent = 'Opční mapa nebo ATR chybí – návrh nejde spočítat.'; return; }
+    setMode('hand');
+    const eIn = parseFloat($('t-entry').value), e = (isFinite(eIn) ? eIn : (side > 0 ? S.buy : S.sell) + basis) - basis;
+    const neg = x.gex_musd < 0, mx = Math.max(...x.gex_profile.map((r) => Math.abs(r[1])));
+    const lv = [...x.gex_profile.filter((r) => Math.abs(r[1]) >= 0.4 * mx).map((r) => r[0]), x.call_wall, x.put_wall, x.gex_flip, x.max_pain].filter((v) => Number.isFinite(v));
+    const ahead = lv.filter((p) => (p - e) * side >= A).sort((a, b) => (a - b) * side);
+    const behind = lv.filter((p) => (e - p) * side > 0).sort((a, b) => (b - a) * side);
+    let slD = behind.length ? (e - behind[0]) * side + 0.3 * A : 1.5 * A;
+    slD = Math.min(Math.max(slD, (neg ? 1.0 : 0.7) * A), (neg ? 3 : 2) * A);
+    let tp = neg ? (ahead[1] ?? ahead[0]) : ahead[0];
+    if (tp == null) tp = e + side * 2 * slD;
+    $('t-entry').value = (e + basis).toFixed(2);
+    $('t-tp').value = (tp + basis).toFixed(2);
+    $('t-sl').value = (e + basis - side * slD).toFixed(2);
+    $('t-robot').innerHTML = `📊 Návrh z gamy (${neg ? 'záporná – SL volnější, TP až na druhou úroveň' : 'kladná – TP na nejbližší úroveň, SL těsnější'}): TP ${fmt(tp + basis)}, SL ${fmt(slD)} b. <b>Neověřené pravidlo</b> – rozhoduješ ty.`;
+    trade();
+  }
+  function lotsNow() {
+    const e = parseFloat($('t-entry').value), sl = parseFloat($('t-sl').value), dSl = (e - sl) * tSide;
+    const a = acc(), riskUsd = a.bal * a.rp / 100;
+    return { e, sl, dSl, riskUsd, lots: dSl > 0 && riskUsd > 0 ? riskUsd / (dSl * 100) : null };
+  }
+  function trade() {
+    const e = parseFloat($('t-entry').value), tp = parseFloat($('t-tp').value), sl = parseFloat($('t-sl').value);
+    const basis = +$('t-basis').value || 0, side = tSide, a = acc();
+    $('acc').textContent = `Účet ${a.bal.toLocaleString('cs-CZ')} $, riziko ${a.rp} % = ${fmt(a.bal * a.rp / 100, 0)} $ na obchod (mění se v Kalkulátoru, platí pro celou aplikaci).`;
+    try { localStorage.setItem('mtf_gold_trade', JSON.stringify({ ...Object.fromEntries(TR.map((k) => [k, $(k).value])), side, filled: $('t-filled').checked, mode })); } catch (x) {}
+    const warn = [];
+    if (!isFinite(e)) { ['t-dist', 't-rr', 't-lot', 't-usd', 't-now'].forEach((k) => ($(k).textContent = '–')); $('t-warn').innerHTML = ''; return; }
+    const dTp = isFinite(tp) ? (tp - e) * side : null, dSl = isFinite(sl) ? (e - sl) * side : null;
+    let be = '';
+    if (dTp != null && dTp <= 0) warn.push('TP je na špatné straně vstupu');
+    if (dSl != null && dSl <= 0) warn.push('SL je na špatné straně vstupu');
+    $('t-dist').textContent = `${dTp != null ? fmt(dTp) : '–'} b. / ${dSl != null ? fmt(dSl) : '–'} b.`;
+    const rr = dTp > 0 && dSl > 0 ? dTp / dSl : null;
+    $('t-rr').innerHTML = rr ? `<span style="color:var(${rr >= 2 ? '--g' : rr >= 1 ? '--a' : '--r'})">1 : ${fmt(rr, 2)}</span>` : '–';
+    if (rr && rr < 1) warn.push('zisk menší než riziko (pod 1 : 1)');
+    const { lots } = lotsNow();
+    $('t-lot').textContent = lots ? fmt(lots, 2) + ' lotu' : '–';
+    $('t-usd').innerHTML = lots ? `<span style="color:var(--g)">+${fmt(dTp * lots * 100)} $</span> / <span style="color:var(--r)">−${fmt(dSl * lots * 100)} $</span>` : '–';
+    if (S.price != null) {
+      const px = S.price + basis, pts = (px - e) * side, filled = $('t-filled').checked;
+      $('t-now').innerHTML = filled
+        ? `${fmt(px)} → <span style="color:var(${pts >= 0 ? '--g' : '--r'})">${pts >= 0 ? '+' : ''}${fmt(pts)} b.${lots ? ` (${pts >= 0 ? '+' : ''}${fmt(pts * lots * 100)} $)` : ''}</span>`
+        : `${fmt(px)} · do vstupu ${fmt(Math.abs(px - e))} b.`;
+      const obs = side > 0 ? S.obsL : S.obsS;
+      if (obs != null && dTp > 0 && (tp - (obs + basis)) * side > 0) warn.push(`TP leží za překážkou ${fmt(obs + basis)} (reliéf)`);
+      if (S.vwap != null && dSl > 0 && (S.vwap + basis - sl) * side > 0 && (S.vwap + basis - e) * side < 0) warn.push('VWAP je mezi vstupem a SL – SL za VWAP bývá bezpečnější');
+      if (S.atr && dSl > 0 && dSl < 0.3 * S.atr) warn.push(`SL ${fmt(dSl)} b. je v šumu (ATR H1 ${fmt(S.atr)})`);
+      if (S.vSide && S.vSide !== side) warn.push(side > 0 ? 'long pod VWAP – proti směru dne' : 'short nad VWAP – proti směru dne');
+      const lv = (S.levels || []).map((l) => ({ ...l, p: l.p + basis })).find((l) => S.atr && dSl > 0 &&
+        (side > 0 ? (l.p > sl && l.p < e && l.p - sl < 0.3 * S.atr) : (l.p < sl && l.p > e && sl - l.p < 0.3 * S.atr)));
+      if (lv) warn.push(`SL těsně za úrovní „${lv.name}“ ${fmt(lv.p)} – tam se stopy často vybírají`);
+      if (filled && dSl > 0) {
+        const r = pts / dSl;
+        be = r >= 1 ? `🛡️ Zisk +${fmt(r, 1)} R – posuň SL na vstup ${fmt(e)} (break-even), případně vyber část zisku.`
+          : `🛡️ Break-even při ceně ${fmt(e + side * dSl)} (+1 R) – pak posuň SL na vstup.`;
+      }
+    }
+    $('t-warn').innerHTML = (be ? `<li>${be}</li>` : '') + (warn.length ? warn.map((w) => `<li>⚠️ ${escHtml(w)}</li>`).join('') : (dTp > 0 && dSl > 0 ? '<li>✅ bez varování</li>' : ''));
+  }
+  function addToPositions() {
+    const tp = parseFloat($('t-tp').value), { e, sl, dSl, riskUsd, lots } = lotsNow();
+    if (!isFinite(e) || !(dSl > 0) || !lots) { alert('Vyplň vstup a SL na správné straně (a zůstatek v Kalkulátoru).'); return; }
+    if (typeof dailyLimitHit === 'function' && dailyLimitHit() && !confirm('Denní limit ztráty je dosažený. Opravdu přidat další pozici?')) return;
+    const L = Math.floor(lots * 100) / 100;
+    const dTp = isFinite(tp) ? (tp - e) * tSide : 0;
+    positions.push({ id: Date.now(), name: 'XAU/USD', dir: tSide > 0 ? 'long' : 'short', lots: L, entry: e, sl, tp: isFinite(tp) ? tp : null,
+      risk: L * dSl * 100, profit: L * dTp * 100, rr: dTp > 0 ? dTp / dSl : null });
+    $('t-filled').checked = true;
+    save(); renderPos(); badge(); trade(); swT('pos');
+  }
+
+  function drawChart() {
+    if (!window.TradingView) return;
+    $('tv').innerHTML = '';
+    new TradingView.widget({ autosize: true, symbol: 'OANDA:XAUUSD', interval: tvInterval, timezone: 'Europe/Prague',
+      theme: document.body.classList.contains('dark') || document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+      style: '1', locale: 'cs', container_id: 'g-tv', studies: ['VWAP@tv-basicstudies'], hide_side_toolbar: true });
+  }
+  function loadTv() {
+    if (tvLoaded) return drawChart();
+    tvLoaded = true;
+    const s = document.createElement('script'); s.src = 'https://s3.tradingview.com/tv.js'; s.onload = drawChart; document.head.appendChild(s);
+  }
+
+  function init() {
+    try { const s = JSON.parse(localStorage.getItem('mtf_gold_trade') || '{}'); TR.forEach((k) => { if (s[k] != null) $(k).value = s[k]; }); if (s.side) tSide = s.side; $('t-filled').checked = !!s.filled; if (s.mode) mode = s.mode; } catch (e) {}
+    $('t-long').onclick = () => { setMode('hand'); setSide(1); }; $('t-short').onclick = () => { setMode('hand'); setSide(-1); };
+    $('m-robot').onclick = () => setMode('robot'); $('m-hand').onclick = () => setMode('hand');
+    $('t-gex').onclick = gexSuggest;
+    $('t-fill').onclick = () => {
+      if (S.buy == null) return;
+      setMode('hand');
+      const basis = +$('t-basis').value || 0, e = (tSide > 0 ? S.buy : S.sell) + basis, sw = S.sw || 0;
+      $('t-entry').value = e.toFixed(2); $('t-tp').value = (e + tSide * 0.8 * sw).toFixed(2); $('t-sl').value = (e - tSide * 4.5).toFixed(2);
+      trade();
+    };
+    $('t-clear').onclick = () => { ['t-entry', 't-tp', 't-sl'].forEach((k) => ($(k).value = '')); $('t-filled').checked = false; trade(); };
+    TR.forEach((k) => $(k).addEventListener('input', () => { if (k !== 't-basis') setMode('hand'); trade(); if (k === 't-basis') robotFill(); }));
+    $('t-filled').addEventListener('change', () => { trade(); robotFill(); });
+    $('t-add').onclick = addToPositions;
+    ['bal', 'rp'].forEach((k) => document.getElementById(k).addEventListener('input', trade));
+    document.getElementById('g-tabs').addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b) return;
+      document.querySelectorAll('#g-tabs button').forEach((x) => x.classList.toggle('on', x === b));
+      tvInterval = b.dataset.i; drawChart();
+    });
+    setSide(tSide); setMode(mode);
+    update();                                   // jednou hned (varování ke scanneru), dál jen při otevřeném detailu
+  }
+  function open() {
+    swT('gold');
+    update(); loadTv();
+    if (!timer) timer = setInterval(() => { if (document.getElementById('tp-gold').classList.contains('on')) update(); else { clearInterval(timer); timer = null; } }, 20000);
+  }
+  return { init, open, update, conflict, state: S };
+})();
+GOLD.init();
 
 // Režim scanneru z minula (bez mazání uložených výsledků)
 (function initModeUI() {
