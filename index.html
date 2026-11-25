@@ -395,6 +395,12 @@ Ceny: Binance XAUUSDT (bývá o ~5–8 b. výš než spot u brokera). Den a VWAP
 <div class="fi"><label>Riziko (%)</label><input type="number" id="rp" value="1" min="0.1" max="10" step="0.1" inputmode="decimal" oninput="calc()"></div>
 </div>
 <div class="fi"><label>Denní limit ztráty (%)</label><input type="number" id="dlim" value="2" min="0.5" step="0.5" inputmode="decimal" oninput="chkLim()"></div>
+<div class="g2">
+<div class="fi"><label>Denní cíl zisku ($)</label><input type="number" id="dgoal" value="60" min="0" step="10" inputmode="decimal" oninput="chkLim()"></div>
+<div class="fi"><label>Dnes uzavřeno v platformě ($)</label><input type="number" id="dman" value="" step="1" inputmode="decimal" placeholder="např. 82 nebo -45" oninput="saveDman();chkLim()"></div>
+</div>
+<div style="font-size:10px;color:var(--t2);margin-top:-4px;">Výsledek obchodů uzavřených mimo appku (RoboForex). Druhý den se sám vynuluje. Sčítá se s Journalem.</div>
+<div id="dayBox" style="margin-top:8px;"></div>
 </div>
 <div class="card">
 <div class="sl">Instrument <span id="calcSrc" style="color:var(--g);font-weight:400;font-size:10px;"></span></div>
@@ -713,7 +719,7 @@ function sizeBox(d) {
   const main = lots >= 0.01
     ? `<b>${lots.toFixed(2)} lotu = ${unitTxt}</b> při stopu ${fmtP(slDist, d.sym)}${per} · riziko ${fmtP(realRisk, 'X')} $`
     : `<b style="color:var(--r);">Neobchodovat:</b> i nejmenší objem 0,01 lotu by riskoval ${fmtP(minRisk, 'X')} $ (${(minRisk / bal * 100).toFixed(1)} % účtu).`;
-  return `<div class="sig-box" style="margin-top:6px;background:var(--bg2);color:var(--t1);"><div class="sig-title">⚖️ Objem na ${rp} % rizika (${fmtP(riskUsd, 'X')} $ z ${Math.round(bal)} $)</div>
+  return `<div style="margin-top:6px;">${dayBoxHtml()}</div>` + `<div class="sig-box" style="margin-top:6px;background:var(--bg2);color:var(--t1);"><div class="sig-title">⚖️ Objem na ${rp} % rizika (${fmtP(riskUsd, 'X')} $ z ${Math.round(bal)} $)</div>
     <div style="font-size:12px;">${main}</div>${spreadWarn}
     <div style="font-size:10px;color:var(--t2);margin-top:2px;">Zůstatek a % rizika se berou z Kalkulátoru${settingsSaved() ? '' : ' — <b>zatím výchozích 1000 $, zadej tam skutečný zůstatek</b>'}.</div></div>`;
 }
@@ -1351,8 +1357,29 @@ function dailyLoss() {
   const bal = Math.max(0, +document.getElementById('bal').value || 0);
   const dlim = Math.max(0.1, +document.getElementById('dlim').value || 2);
   const today = new Date().toDateString();
-  const loss = journal.filter(j => new Date(j.ts).toDateString() === today && j.pl < 0).reduce((s, j) => s + Math.abs(j.pl), 0);
+  const loss = journal.filter(j => new Date(j.ts).toDateString() === today && j.pl < 0).reduce((s, j) => s + Math.abs(j.pl), 0) + Math.max(0, -dmanToday());
   return { loss, limit: bal * dlim / 100 };
+}
+// Denní stav: Journal (dnes uzavřené) + ručně zadaný výsledek z platformy (platí jen pro dnešní datum)
+function dmanToday() {
+  try { const m = JSON.parse(localStorage.getItem('mtf_dman') || 'null'); return m && m.d === new Date().toDateString() ? +m.v || 0 : 0; } catch (e) { return 0; }
+}
+function saveDman() {
+  try { localStorage.setItem('mtf_dman', JSON.stringify({ d: new Date().toDateString(), v: document.getElementById('dman').value })); } catch (e) { }
+}
+function dayStatus() {
+  const today = new Date().toDateString();
+  const jnet = journal.filter(j => new Date(j.ts).toDateString() === today).reduce((s, j) => s + (+j.pl || 0), 0);
+  const net = jnet + dmanToday();
+  const goal = Math.max(0, +(document.getElementById('dgoal') || {}).value || 0);
+  const { limit } = dailyLoss();
+  return { net, goal, limit, goalHit: goal > 0 && net >= goal, lossHit: limit > 0 && net <= -limit };
+}
+function dayBoxHtml() {
+  const s = dayStatus(), f = v => (v >= 0 ? '+' : '') + v.toFixed(0) + ' $';
+  if (s.goalHit) return `<div class="sig-box" style="background:var(--gl);color:var(--glt);"><div class="sig-title">✅ Denní cíl splněn: ${f(s.net)} (cíl ${s.goal} $)</div><div style="font-size:12px;">Pro dnešek konec obchodování.</div></div>`;
+  if (s.lossHit) return `<div class="sig-box" style="background:var(--rl);color:var(--rlt);"><div class="sig-title">⛔ Denní limit ztráty: ${f(s.net)} (limit −${s.limit.toFixed(0)} $)</div><div style="font-size:12px;">Pro dnešek konec obchodování.</div></div>`;
+  return `<div class="sig-box" style="background:var(--bg2);color:var(--t1);"><div class="sig-title">📅 Dnes ${f(s.net)}</div><div style="font-size:12px;">${s.goal > 0 ? `Do cíle zbývá ${Math.max(0, s.goal - s.net).toFixed(0)} $` : 'Cíl nezadán'} · do limitu ztráty zbývá ${Math.max(0, s.limit + s.net).toFixed(0)} $</div></div>`;
 }
 function dailyLimitHit() { const { loss, limit } = dailyLoss(); return limit > 0 && loss >= limit; }
 
@@ -1361,6 +1388,7 @@ function chkLim() {
   const ab = document.getElementById('alertBox');
   if (limit > 0 && loss >= limit) { ab.className = 'alert-box on'; ab.textContent = '⚠️ Denní limit ztráty dosažen! Ztráta dnes: $' + loss.toFixed(2) + ' / limit $' + limit.toFixed(2) + '. Přestaň obchodovat.'; }
   else ab.className = 'alert-box';
+  const db = document.getElementById('dayBox'); if (db) db.innerHTML = dayBoxHtml();
 }
 
 // ─── POSITIONS ────────────────────────────────────────────
@@ -1804,15 +1832,17 @@ function save() {
 // Nastavení účtu (zůstatek, riziko, denní limit) se dřív neukládalo: po každém otevření
 // appky byl zůstatek zase 1000 $ a velikost pozice i denní limit se počítaly z něj.
 function saveSettings() {
-  try { localStorage.setItem('mtf_settings', JSON.stringify({ bal: document.getElementById('bal').value, rp: document.getElementById('rp').value, dlim: document.getElementById('dlim').value })); }
+  try { localStorage.setItem('mtf_settings', JSON.stringify({ bal: document.getElementById('bal').value, rp: document.getElementById('rp').value, dlim: document.getElementById('dlim').value, dgoal: document.getElementById('dgoal').value })); }
   catch (e) { /* localStorage nedostupný */ }
 }
 function loadSettings() {
   try {
     const s = JSON.parse(localStorage.getItem('mtf_settings') || 'null');
-    if (s) ['bal', 'rp', 'dlim'].forEach(k => { if (s[k] !== undefined && s[k] !== '') document.getElementById(k).value = s[k]; });
+    if (s) ['bal', 'rp', 'dlim', 'dgoal'].forEach(k => { if (s[k] !== undefined && s[k] !== '') document.getElementById(k).value = s[k]; });
   } catch (e) { /* poškozené nastavení — zůstanou výchozí hodnoty */ }
-  ['bal', 'rp', 'dlim'].forEach(k => document.getElementById(k).addEventListener('change', () => { saveSettings(); refreshScanCards(); }));
+  { const m = dmanToday(); document.getElementById('dman').value = m ? m : ''; }
+  document.getElementById('dman').addEventListener('change', refreshScanCards);
+  ['bal', 'rp', 'dlim', 'dgoal'].forEach(k => document.getElementById(k).addEventListener('change', () => { saveSettings(); refreshScanCards(); }));
 }
 function loadData() {
   try {
